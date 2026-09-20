@@ -1,26 +1,70 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #fbfaf8;
+  --surface: #ffffff;
+  --surface-muted: #f2efea;
+  --foreground: #1c1917;
+  --muted: #78716c;
+  --border: #e3ded6;
+  --accent: #b45309;
+  --accent-foreground: #ffffff;
+  --success: #15803d;
+  --danger: #b91c1c;
+  --warning: #a16207;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #16140f;
+    --surface: #211e18;
+    --surface-muted: #2b2720;
+    --foreground: #f5f0e8;
+    --muted: #a8a29e;
+    --border: #3a352c;
+    --accent: #f0a83c;
+    --accent-foreground: #1c1917;
+    --success: #4ade80;
+    --danger: #f87171;
+    --warning: #fbbf24;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --font-sans: var(--font-latin), var(--font-thai), system-ui, sans-serif;
+  --font-thai: var(--font-thai), var(--font-latin), system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-latin), var(--font-thai), system-ui, sans-serif;
+}
+
+/* Thai needs more leading than Latin: vowel signs stack above and below the line. */
+:lang(th) {
+  font-family: var(--font-thai), var(--font-latin), system-ui, sans-serif;
+  line-height: 1.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
