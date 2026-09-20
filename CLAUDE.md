@@ -23,6 +23,10 @@ there is no fuzzy tolerance, because a lenient matcher silently teaches wrong sp
 Strictness settings apply to the English side only. EN→TH production defaults to
 word-order / tap-to-build exercises; free-typed Thai is opt-in.
 
+The engine lives in `src/lib/answer` and is documented in
+[docs/answer-checking.md](docs/answer-checking.md) — normalization rules, the weighted
+edit-distance formula, the accuracy formula and the grading bands.
+
 ## Data
 
 Eight IndexedDB stores: `lessons`, `sentences`, `vocab`, `progress`, `attempts`,
