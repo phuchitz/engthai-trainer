@@ -27,6 +27,14 @@ The engine lives in `src/lib/answer` and is documented in
 [docs/answer-checking.md](docs/answer-checking.md) — normalization rules, the weighted
 edit-distance formula, the accuracy formula and the grading bands.
 
+## Scheduling
+
+`src/lib/srs` is a simplified SM-2 behind the `Scheduler` interface, documented in
+[docs/spaced-repetition.md](docs/spaced-repetition.md). Intervals are whole **local
+calendar days** anchored to midnight, and `isNew` (never practised) is kept strictly
+separate from `isDue` (practised, scheduled day has arrived) — conflating them would let
+the new-card limit throttle genuine reviews. The unit tests pin `TZ=Asia/Bangkok`.
+
 ## Data
 
 Eight IndexedDB stores: `lessons`, `sentences`, `vocab`, `progress`, `attempts`,
