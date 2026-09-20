@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { categorySchema, DEFAULT_CATEGORY } from "./category";
 import { idSchema, levelSchema, sourceSchema, tagsSchema, timestampSchema } from "./common";
 
 export const sentenceSchema = z.object({
@@ -19,10 +20,15 @@ export const sentenceSchema = z.object({
 
   transliteration: z.string().max(400).optional(),
   hint: z.string().max(300).optional(),
-  /** Grammar or usage note, shown after the answer is graded. */
+  /** Grammar or usage note in Thai, shown after the answer is graded. */
   notes: z.string().max(1000).optional(),
 
+  /** A second sentence using the same pattern, shown alongside the grammar note. */
+  exampleEn: z.string().max(400).optional(),
+  exampleTh: z.string().max(400).optional(),
+
   tags: tagsSchema.default([]),
+  category: categorySchema.default(DEFAULT_CATEGORY),
   level: levelSchema,
   lessonIds: z.array(idSchema).default([]),
   vocabIds: z.array(idSchema).default([]),

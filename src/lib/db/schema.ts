@@ -12,7 +12,7 @@ import type {
 export const DB_NAME = "engthai-trainer";
 
 /** Bump together with a new entry in lib/db/migrations. */
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export type MetaRecord = {
   key: string;
@@ -33,6 +33,7 @@ export interface EngThaiDB extends DBSchema {
       "by-source": string;
       "by-tag": string;
       "by-lesson": string;
+      "by-category": string;
     };
   };
   vocab: {

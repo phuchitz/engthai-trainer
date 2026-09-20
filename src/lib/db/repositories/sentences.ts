@@ -1,5 +1,5 @@
 import { getDatabase } from "../client";
-import { sentenceSchema, type Sentence } from "@/lib/models";
+import { sentenceSchema, type Category, type Sentence } from "@/lib/models";
 
 export async function putSentence(sentence: Sentence): Promise<Sentence> {
   const parsed = sentenceSchema.parse(sentence);
@@ -37,6 +37,16 @@ export async function listSentences(): Promise<Sentence[]> {
 export async function listSentencesByLesson(lessonId: string): Promise<Sentence[]> {
   const db = await getDatabase();
   return db.getAllFromIndex("sentences", "by-lesson", lessonId);
+}
+
+export async function listSentencesByCategory(category: Category): Promise<Sentence[]> {
+  const db = await getDatabase();
+  return db.getAllFromIndex("sentences", "by-category", category);
+}
+
+export async function countSentencesByCategory(category: Category): Promise<number> {
+  const db = await getDatabase();
+  return db.countFromIndex("sentences", "by-category", category);
 }
 
 export async function listSentencesByTag(tag: string): Promise<Sentence[]> {

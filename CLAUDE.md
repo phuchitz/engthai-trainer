@@ -50,9 +50,27 @@ separately tested `Migration`, and `migrationsToRun` replays every step a databa
 behind, in order. **Never edit a released migration** — a learner three versions behind
 replays it, so changing it changes their history.
 
+**Never `await` between cursor steps in a migration.** A loop like
+`for await (const cursor of store) { await cursor.update(...) }` silently backfills
+nothing in a real browser, because awaiting lets the upgrade transaction auto-commit.
+fake-indexeddb is more forgiving and passes it, so unit tests will not catch this —
+read with `getAll()` and issue the writes together, and cover the upgrade in an e2e
+test against a real browser (`tests/e2e/migration.spec.ts`).
+
 Theme is deliberately not in the settings store: it must be readable synchronously
 before first paint to avoid a flash, so it lives in localStorage and is read by a
 pre-paint script in the root layout.
+
+## XP, streaks and duplicate prevention
+
+`src/lib/study/policy.ts` decides these, and every decision is **derived from the
+append-only attempt log**, never from a flag on the progress row or anything held in
+memory. That is what makes them survive a refresh, a resubmission or a second tab.
+
+- XP is paid once per card per local calendar day, for the first passing answer.
+- The schedule moves on the first _graded_ answer of the day, pass or fail — so drilling
+  a card until it is right cannot buy a longer interval.
+- A skip is logged but is never a success: no XP, no schedule move, and the card stays due.
 
 ## Commands
 

@@ -74,6 +74,7 @@ describe("upgrading a real database", () => {
       enAlternates: [],
       thAlternates: [],
       tags: [],
+      category: "daily",
       level: "A2",
       lessonIds: [],
       vocabIds: [],

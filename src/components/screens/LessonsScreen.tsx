@@ -1,40 +1,115 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { CATEGORY_INFO, CATEGORIES } from "@/lib/models";
+import { loadCategorySummaries, type CategorySummary } from "@/lib/study/stats";
 import { useLibrary } from "@/hooks/useLibrary";
-import { EmptyState, ErrorState, LoadingState } from "@/components/common/States";
+import { ErrorState, LoadingState } from "@/components/common/States";
 
-export function LessonsScreen() {
-  const { status, error, lessons } = useLibrary();
-
-  if (status === "idle" || status === "loading") return <LoadingState label="Loading lessons…" />;
-  if (status === "error") return <ErrorState message={error ?? "Unknown error"} />;
-
-  if (lessons.length === 0) {
-    return (
-      <EmptyState
-        title="No lessons yet"
-        description="Lessons group sentences into an ordered deck. Import one, or create your own once editing lands."
+function ProgressBar({ percent }: { percent: number }) {
+  return (
+    <div className="bg-surface-muted h-1.5 w-full overflow-hidden rounded-full">
+      <div
+        className="bg-accent h-full rounded-full transition-[width]"
+        style={{ width: `${percent}%` }}
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
       />
-    );
-  }
+    </div>
+  );
+}
+
+function CategoryCard({ summary }: { summary: CategorySummary }) {
+  const info = CATEGORY_INFO[summary.category];
+  const empty = summary.total === 0;
 
   return (
-    <ul className="space-y-3">
-      {lessons.map((lesson) => (
-        <li key={lesson.id} className="border-border bg-surface rounded-xl border p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="font-medium">{lesson.title}</p>
-              <p className="text-muted text-sm" lang="th">
-                {lesson.titleTh}
-              </p>
-            </div>
-            <span className="bg-surface-muted text-muted rounded-md px-2 py-1 text-xs">{lesson.level}</span>
+    <li className="border-border bg-surface rounded-xl border p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-medium">{info.label}</p>
+          <p className="text-muted text-sm" lang="th">
+            {info.labelTh}
+          </p>
+        </div>
+        {summary.levels.length > 0 ? (
+          <span className="bg-surface-muted text-muted shrink-0 rounded-md px-2 py-1 text-xs">
+            {summary.levels.length === 1
+              ? summary.levels[0]
+              : `${summary.levels[0]}–${summary.levels[summary.levels.length - 1]}`}
+          </span>
+        ) : null}
+      </div>
+
+      <p className="text-muted mt-2 text-sm">{info.description}</p>
+
+      {empty ? (
+        <p className="text-muted mt-4 text-sm">
+          No sentences yet — import a deck or add your own to start this category.
+        </p>
+      ) : (
+        <>
+          <div className="text-muted mt-4 flex items-center justify-between text-xs">
+            <span>
+              {summary.total} {summary.total === 1 ? "sentence" : "sentences"}
+              {summary.due > 0 ? ` · ${summary.due} due` : ""}
+            </span>
+            <span className="tabular-nums">{summary.completionPercent}% complete</span>
           </div>
-          {lesson.description ? <p className="text-muted mt-2 text-sm">{lesson.description}</p> : null}
-          <p className="text-muted mt-3 text-xs">{lesson.sentenceIds.length} sentences</p>
-        </li>
-      ))}
-    </ul>
+          <div className="mt-2">
+            <ProgressBar percent={summary.completionPercent} />
+          </div>
+          <Link
+            href={{ pathname: "/learn", query: { category: summary.category } }}
+            className="bg-accent text-accent-foreground mt-4 inline-flex rounded-lg px-4 py-2 text-sm font-medium"
+          >
+            Start dictation
+          </Link>
+        </>
+      )}
+    </li>
+  );
+}
+
+export function LessonsScreen() {
+  const { status, error } = useLibrary();
+  const [summaries, setSummaries] = useState<CategorySummary[] | null>(null);
+
+  useEffect(() => {
+    if (status !== "ready") return;
+    void loadCategorySummaries().then(setSummaries);
+  }, [status]);
+
+  if (status === "error") return <ErrorState message={error ?? "Unknown error"} />;
+  if (status === "idle" || status === "loading" || summaries === null)
+    return <LoadingState label="Loading categories…" />;
+
+  const stocked = summaries.filter((s) => s.total > 0);
+  const empty = summaries.filter((s) => s.total === 0);
+
+  return (
+    <div className="space-y-6">
+      <ul className="space-y-3">
+        {stocked.map((summary) => (
+          <CategoryCard key={summary.category} summary={summary} />
+        ))}
+      </ul>
+
+      {empty.length > 0 ? (
+        <section>
+          <h2 className="text-muted mb-3 text-xs font-medium tracking-wide uppercase">
+            Not started ({empty.length} of {CATEGORIES.length})
+          </h2>
+          <ul className="space-y-3">
+            {empty.map((summary) => (
+              <CategoryCard key={summary.category} summary={summary} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
   );
 }

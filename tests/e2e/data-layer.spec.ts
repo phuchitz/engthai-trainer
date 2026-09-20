@@ -2,26 +2,26 @@ import { test, expect } from "@playwright/test";
 
 test("seeds the starter deck into IndexedDB on first visit", async ({ page }) => {
   await page.goto("/lessons/");
-  await expect(page.getByText("Everyday Basics")).toBeVisible();
-  await expect(page.getByText("พื้นฐานประจำวัน")).toBeVisible();
+  await expect(page.getByText("Daily Conversation")).toBeVisible();
+  await expect(page.getByText("บทสนทนาประจำวัน")).toBeVisible();
   await expect(page.getByText("3 sentences")).toBeVisible();
 });
 
 test("does not duplicate seeded rows across reloads", async ({ page }) => {
   await page.goto("/lessons/");
-  await expect(page.getByText("Everyday Basics")).toBeVisible();
+  await expect(page.getByText("Daily Conversation")).toBeVisible();
   await page.reload();
   await page.reload();
-  await expect(page.getByText("Everyday Basics")).toHaveCount(1);
+  await expect(page.getByText("Daily Conversation")).toHaveCount(1);
 
   await page.goto("/data/");
-  await expect(page.getByText("Sentences").locator("xpath=following-sibling::p[1]")).toHaveText("3");
+  await expect(page.getByText("Sentences").locator("xpath=following-sibling::p[1]")).toHaveText("6");
 });
 
 test("derives dashboard counts from stored progress rows", async ({ page }) => {
   await page.goto("/");
-  // Three sentences plus two vocabulary entries, each tracked in both directions.
-  await expect(page.getByText("Tracked cards").locator("xpath=following-sibling::p[1]")).toHaveText("10");
+  // Six sentences plus four vocabulary entries, each tracked in both directions.
+  await expect(page.getByText("Tracked cards").locator("xpath=following-sibling::p[1]")).toHaveText("20");
 });
 
 test("shows seeded vocabulary with its Thai reading", async ({ page }) => {

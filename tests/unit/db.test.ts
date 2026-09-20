@@ -37,6 +37,7 @@ function sentence(id: string, over: Partial<Sentence> = {}): Sentence {
     enAlternates: [],
     thAlternates: [],
     tags: ["everyday"],
+    category: "daily",
     level: "A1",
     lessonIds: ["l1"],
     vocabIds: [],
@@ -67,6 +68,7 @@ describe("database schema", () => {
     const db = await getDatabase();
     const tx = db.transaction(["sentences", "progress", "attempts"], "readonly");
     expect(Array.from(tx.objectStore("sentences").indexNames).sort()).toEqual([
+      "by-category",
       "by-lesson",
       "by-level",
       "by-source",
