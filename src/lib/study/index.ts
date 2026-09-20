@@ -2,7 +2,7 @@ export { isPass, attemptsTodayFor, shouldAwardXp, shouldSchedule, cardsCompleted
 export type { PriorAttempt } from "./policy";
 
 export { submitAnswer, skipCard, DICTATION_DIRECTION } from "./grade";
-export type { SubmitInput, SubmitOutcome, SkipInput } from "./grade";
+export type { SubmitInput, SubmitOutcome, SkipInput, ScoringOverride } from "./grade";
 
 export { buildStudyQueue } from "./queue";
 

@@ -61,6 +61,31 @@ Theme is deliberately not in the settings store: it must be readable synchronous
 before first paint to avoid a flash, so it lives in localStorage and is read by a
 pre-paint script in the root layout.
 
+## Exercise modes
+
+`src/lib/exercises` holds the pure per-mode logic; `MODE_INFO` is the single source of
+truth for each mode's direction and languages.
+
+Four modes (Dictation, Thai to English, Fill in the Blank, Speaking) train **producing
+English** and therefore share the `th2en` card — audio, a Thai prompt and a gapped
+sentence are different ways of asking for the same skill. Sentence Builder is the only
+mode that asks for Thai, and it asks by **tapping tiles**, which is how Thai production
+is trained here; it uses the `en2th` card and so schedules independently.
+
+Two rules that are easy to get wrong:
+
+- **Sentence Builder tiles are identified by index, not by text.** A sentence with a
+  repeated word yields distinct tiles; keying by text would make duplicates
+  interchangeable, so tapping one would consume the other.
+- **Fill in the Blank scores only the removed words**, via `submitAnswer`'s `scoring`
+  override. Grading the reassembled sentence flatters the learner, because the words
+  that were never removed are always right.
+
+Speaking is **transcript similarity, never pronunciation assessment**. The microphone is
+off until explicitly enabled, the consent panel states that the browser may use an
+external service, no audio is stored, and every failure path (unsupported, denied, no
+microphone, no speech, network) falls back to self-assessed manual practice.
+
 ## XP, streaks and duplicate prevention
 
 `src/lib/study/policy.ts` decides these, and every decision is **derived from the

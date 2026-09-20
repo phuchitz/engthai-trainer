@@ -33,12 +33,32 @@ test("shows sentence count, level range and completion for a stocked category", 
   await expect(page.getByText("0% complete").first()).toBeVisible();
 });
 
+test("hides the answer until it is submitted, when audio is available", async ({ page }) => {
+  // The test browser has no installed voices, so dictation would otherwise fall back to
+  // showing the sentence. Stub one in to exercise the normal path.
+  await page.addInitScript(() => {
+    const voice = { lang: "en-US", name: "Test Voice", default: true, localService: true, voiceURI: "t" };
+    Object.defineProperty(window.speechSynthesis, "getVoices", { value: () => [voice] });
+  });
+
+  await page.goto("/learn/?category=daily&mode=dictation");
+  await expect(page.getByText("Card 1 of 3")).toBeVisible();
+  await expect(page.getByText(CARD_1)).toHaveCount(0);
+});
+
+test("shows the sentence instead when no voice is installed", async ({ page }) => {
+  await page.goto("/learn/?category=daily&mode=dictation");
+
+  // Without audio there is nothing to dictate, so the sentence is revealed rather than
+  // leaving the card unanswerable — and the reason is stated.
+  await expect(page.getByText(/No English voice is installed/)).toBeVisible();
+  await expect(page.getByText(CARD_1).first()).toBeVisible();
+});
+
 test("completes a dictation card and awards XP", async ({ page }) => {
   await page.getByRole("link", { name: "Start dictation" }).first().click();
 
   await expect(page.getByText("Card 1 of 3")).toBeVisible();
-  // The answer must not be on screen before it is submitted.
-  await expect(page.getByText(CARD_1)).toHaveCount(0);
 
   await answer(page, "where are you going");
 

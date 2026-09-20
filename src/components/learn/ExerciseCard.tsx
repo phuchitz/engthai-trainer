@@ -3,11 +3,15 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { BAND_LABELS } from "@/lib/answer";
 import { CATEGORY_INFO } from "@/lib/models";
-import { isSpeechSupported, speak } from "@/lib/speech/tts";
+import { MODE_INFO } from "@/lib/exercises";
+import { hasVoiceFor, isSpeechSupported, speak } from "@/lib/speech/tts";
 import { useStudyStore } from "@/stores/useStudyStore";
 import { NavIcon } from "@/components/layout/NavIcon";
 import { AnswerDiff, DiffLegend } from "./AnswerDiff";
 import { Shortcut } from "./Shortcut";
+import { WordOrderInput } from "./inputs/WordOrderInput";
+import { FillBlankInput } from "./inputs/FillBlankInput";
+import { SpeakInput } from "./inputs/SpeakInput";
 
 const SPEAKER_ICON = "M11 5 6 9H2v6h4l5 4V5Zm4.5 3a5 5 0 0 1 0 8m2.5-11a9 9 0 0 1 0 14";
 
@@ -19,20 +23,25 @@ const BAND_TONE = {
 } as const;
 
 const NO_SUBSCRIPTION = () => () => {};
-const SPEECH_SERVER_SNAPSHOT = () => false;
+const SERVER_SNAPSHOT = () => false;
 
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className="bg-surface-muted text-muted rounded-md px-2 py-1 text-xs">{children}</span>;
 }
 
-export function DictationCard() {
+export function ExerciseCard() {
+  const store = useStudyStore();
   const {
     cards,
     index,
+    mode,
     phase,
     answer,
     hintUsed,
     outcome,
+    placed,
+    blankAnswers,
+    transcript,
     sessionXp,
     cardsToday,
     dailyGoal,
@@ -45,33 +54,48 @@ export function DictationCard() {
     retry,
     skip,
     next,
-  } = useStudyStore();
+  } = store;
 
   const sentence = cards[index];
+  const info = MODE_INFO[mode];
   const inputRef = useRef<HTMLInputElement>(null);
-  // Prerendered HTML cannot know whether this browser speaks, so the server snapshot is
-  // false and the real value arrives on hydration. Support never changes after load, so
-  // there is nothing to subscribe to.
-  const speechAvailable = useSyncExternalStore(NO_SUBSCRIPTION, isSpeechSupported, SPEECH_SERVER_SNAPSHOT);
+
+  const speechAvailable = useSyncExternalStore(NO_SUBSCRIPTION, isSpeechSupported, SERVER_SNAPSHOT);
+  const promptVoice = useSyncExternalStore(
+    NO_SUBSCRIPTION,
+    useCallback(() => hasVoiceFor(info.promptLanguage), [info.promptLanguage]),
+    SERVER_SNAPSHOT,
+  );
+
+  const promptText = sentence ? (info.promptLanguage === "th" ? sentence.th : sentence.en) : "";
 
   const play = useCallback(() => {
     if (!sentence) return;
     markTtsUsed();
-    speak(sentence.en, { lang: "en-US" });
-  }, [sentence, markTtsUsed]);
+    speak(promptText, { lang: info.promptLanguage === "th" ? "th-TH" : "en-US" });
+  }, [sentence, promptText, info.promptLanguage, markTtsUsed]);
 
-  // Refocus whenever a new card appears or the learner retries, so typing can resume
-  // without reaching for the mouse.
+  const typesAnswer = mode === "dictation" || mode === "translate";
+
   useEffect(() => {
-    if (phase === "prompt") inputRef.current?.focus();
-  }, [phase, index]);
+    if (phase === "prompt" && typesAnswer) inputRef.current?.focus();
+  }, [phase, index, typesAnswer]);
+
+  const canSubmit =
+    mode === "wordOrder"
+      ? placed.length > 0
+      : mode === "fillBlank"
+        ? blankAnswers.some((v) => v.trim().length > 0)
+        : mode === "speak"
+          ? transcript !== null
+          : answer.trim().length > 0;
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey) return;
 
-      // Alt combinations do not produce characters, so these stay usable while the
-      // answer field has focus — which it almost always does in dictation.
+      // Alt combinations produce no characters, so they stay usable while a text field
+      // has focus — which it does in most of these modes.
       if (event.altKey) {
         const handlers: Record<string, (() => void) | undefined> = {
           p: play,
@@ -102,6 +126,7 @@ export function DictationCard() {
 
   const graded = phase === "graded" && outcome !== null;
   const goalPercent = dailyGoal > 0 ? Math.min(100, Math.round((cardsToday / dailyGoal) * 100)) : 0;
+  const replayDisabled = !speechAvailable || !promptVoice;
 
   return (
     <div className="space-y-5">
@@ -122,64 +147,88 @@ export function DictationCard() {
         <div className="mb-4 flex flex-wrap gap-2">
           <Badge>{sentence.level}</Badge>
           <Badge>{CATEGORY_INFO[sentence.category].label}</Badge>
-          <Badge>Dictation</Badge>
+          <Badge>{info.label}</Badge>
         </div>
 
-        <button
-          type="button"
-          onClick={play}
-          disabled={!speechAvailable}
-          className="bg-accent text-accent-foreground flex w-full items-center justify-center gap-2 rounded-lg px-4 py-4 text-sm font-medium disabled:opacity-50"
-        >
-          <NavIcon path={SPEAKER_ICON} className="size-5" />
-          Listen
-          <Shortcut keys="Alt+P" />
-        </button>
+        {/* Dictation and Speaking are the modes where the audio *is* the prompt. */}
+        {mode === "dictation" || mode === "speak" ? (
+          <button
+            type="button"
+            onClick={play}
+            disabled={replayDisabled}
+            className="bg-accent text-accent-foreground flex w-full items-center justify-center gap-2 rounded-lg px-4 py-4 text-sm font-medium disabled:opacity-50"
+          >
+            <NavIcon path={SPEAKER_ICON} className="size-5" />
+            Listen
+            <Shortcut keys="Alt+P" />
+          </button>
+        ) : (
+          <div className="flex items-start justify-between gap-3">
+            <p lang={info.promptLanguage} className="text-xl">
+              {promptText}
+            </p>
+            <button
+              type="button"
+              onClick={play}
+              disabled={replayDisabled}
+              className="border-border text-muted flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs disabled:opacity-40"
+              aria-label="Replay the prompt"
+            >
+              <NavIcon path={SPEAKER_ICON} className="size-4" />
+              Replay
+              <Shortcut keys="Alt+P" />
+            </button>
+          </div>
+        )}
 
-        {!speechAvailable ? (
+        {replayDisabled ? (
           <p className="text-muted mt-2 text-xs">
-            This browser has no speech synthesis, so the sentence is shown instead of played.
+            {!speechAvailable
+              ? "This browser has no speech synthesis."
+              : `No ${info.promptLanguage === "th" ? "Thai" : "English"} voice is installed, so audio is unavailable.`}
+            {mode === "dictation" ? " The sentence is shown instead." : ""}
           </p>
         ) : null}
 
-        {!speechAvailable && !graded ? <p className="mt-3 text-lg">{sentence.en}</p> : null}
-
-        <label htmlFor="dictation-answer" className="text-muted mt-5 mb-2 block text-sm">
-          Type what you hear, in English
-        </label>
-        <input
-          id="dictation-answer"
-          ref={inputRef}
-          value={graded ? outcome.result.normalizedUser : answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          readOnly={graded}
-          autoComplete="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          lang="en"
-          className="border-border bg-background focus:border-accent w-full rounded-lg border px-3 py-2.5 text-lg outline-none read-only:opacity-60"
-          placeholder="…"
-        />
-
-        {hintUsed && !graded ? (
-          <div className="border-border mt-4 space-y-1 rounded-lg border border-dashed p-3">
-            <p lang="th" className="text-sm">
-              {sentence.th}
-            </p>
-            {sentence.hint ? (
-              <p className="text-muted text-xs" lang="th">
-                {sentence.hint}
-              </p>
-            ) : null}
-          </div>
+        {mode === "dictation" && replayDisabled && !graded ? (
+          <p className="mt-3 text-lg">{sentence.en}</p>
         ) : null}
+
+        <p className="text-muted mt-5 mb-2 text-sm" id="exercise-instruction">
+          {info.instruction}
+        </p>
+
+        {typesAnswer ? (
+          <input
+            id="exercise-answer"
+            ref={inputRef}
+            value={graded ? outcome.result.normalizedUser : answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            readOnly={graded}
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            lang="en"
+            aria-labelledby="exercise-instruction"
+            className="border-border bg-background focus:border-accent w-full rounded-lg border px-3 py-2.5 text-lg outline-none read-only:opacity-60"
+            placeholder="…"
+          />
+        ) : mode === "wordOrder" ? (
+          <WordOrderInput />
+        ) : mode === "fillBlank" ? (
+          <FillBlankInput />
+        ) : (
+          <SpeakInput />
+        )}
+
+        {hintUsed && !graded ? <HintPanel /> : null}
 
         {!graded ? (
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => void submit()}
-              disabled={submitting || answer.trim().length === 0}
+              disabled={submitting || !canSubmit}
               className="bg-foreground text-background rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-40"
             >
               Check
@@ -212,12 +261,56 @@ export function DictationCard() {
   );
 }
 
+/** Each mode needs a different nudge: the hint must not simply be the answer. */
+function HintPanel() {
+  const { cards, index, mode, fillBlank } = useStudyStore();
+  const sentence = cards[index];
+  if (!sentence) return null;
+
+  return (
+    <div className="border-border mt-4 space-y-1 rounded-lg border border-dashed p-3">
+      {mode === "dictation" ? (
+        <p lang="th" className="text-sm">
+          {sentence.th}
+        </p>
+      ) : null}
+
+      {mode === "translate" || mode === "speak" ? (
+        <p className="text-sm">
+          Starts with: <span className="font-medium">{sentence.en.split(" ").slice(0, 2).join(" ")}…</span>
+        </p>
+      ) : null}
+
+      {mode === "wordOrder" && sentence.transliteration ? (
+        <p className="text-sm">{sentence.transliteration}</p>
+      ) : null}
+
+      {mode === "fillBlank" && fillBlank ? (
+        <p className="text-sm">
+          First letters:{" "}
+          <span className="font-medium">
+            {fillBlank.blanks.map((b) => `${b.answer.charAt(0)}…`).join("  ")}
+          </span>
+        </p>
+      ) : null}
+
+      {sentence.hint ? (
+        <p className="text-muted text-xs" lang="th">
+          {sentence.hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function Feedback() {
-  const { cards, index, outcome, vocabulary, retry, next } = useStudyStore();
+  const { cards, index, mode, outcome, vocabulary, retry, next, selfAssess } = useStudyStore();
   const sentence = cards[index];
   if (!outcome || !sentence) return null;
 
   const { result } = outcome;
+  const answerText = MODE_INFO[mode].answerLanguage === "th" ? sentence.th : sentence.en;
+  const secondary = MODE_INFO[mode].answerLanguage === "th" ? sentence.en : sentence.th;
 
   return (
     <div className="border-border bg-surface space-y-4 rounded-xl border p-5">
@@ -226,6 +319,17 @@ function Feedback() {
         <p className="text-muted text-sm tabular-nums">{result.accuracy}%</p>
       </div>
 
+      {mode === "speak" ? (
+        <p className="text-muted text-xs">
+          Transcript similarity, not pronunciation assessment — recognition can mishear a perfectly good
+          sentence.
+        </p>
+      ) : null}
+
+      {mode === "fillBlank" ? (
+        <p className="text-muted text-xs">Only the missing words were scored.</p>
+      ) : null}
+
       <div>
         <AnswerDiff ops={result.ops} />
         <DiffLegend />
@@ -233,16 +337,18 @@ function Feedback() {
 
       <div className="border-border space-y-2 border-t pt-4">
         <p className="text-muted text-xs tracking-wide uppercase">Answer</p>
-        <p className="text-lg">{sentence.en}</p>
-        <p lang="th" className="text-muted">
-          {sentence.th}
+        <p lang={MODE_INFO[mode].answerLanguage} className="text-lg">
+          {answerText}
+        </p>
+        <p lang={MODE_INFO[mode].answerLanguage === "th" ? "en" : "th"} className="text-muted">
+          {secondary}
         </p>
         {sentence.transliteration ? <p className="text-muted text-xs">{sentence.transliteration}</p> : null}
       </div>
 
-      {sentence.notes ? (
+      {result.band !== "perfect" && sentence.notes ? (
         <div className="border-border border-t pt-4">
-          <p className="text-muted text-xs tracking-wide uppercase">Grammar</p>
+          <p className="text-muted text-xs tracking-wide uppercase">Why</p>
           <p lang="th" className="mt-1 text-sm">
             {sentence.notes}
           </p>
@@ -307,6 +413,15 @@ function Feedback() {
           Retry
           <Shortcut keys="Alt+R" />
         </button>
+        {mode === "speak" && result.band !== "perfect" ? (
+          <button
+            type="button"
+            onClick={() => void selfAssess(true)}
+            className="text-muted rounded-lg px-4 py-2 text-sm underline"
+          >
+            Recognition misheard me
+          </button>
+        ) : null}
       </div>
     </div>
   );

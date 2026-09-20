@@ -1,4 +1,4 @@
-import { checkAnswer, type Band, type CheckResult } from "@/lib/answer";
+import { checkAnswer, type Band, type CheckResult, type Language } from "@/lib/answer";
 import { advanceStreak, xpForAnswer } from "@/lib/gamification";
 import type { Attempt, Direction, ExerciseMode, Grade, Sentence, Verdict } from "@/lib/models";
 import { defaultScheduler, ratingFromResult, type Rating } from "@/lib/srs";
@@ -24,6 +24,19 @@ const VERDICT_BY_BAND: Record<Band, Verdict> = {
 
 const GRADE_BY_RATING: Record<Rating, Grade> = { again: 1, hard: 2, good: 3, easy: 4 };
 
+/**
+ * Replaces what the answer is graded against.
+ *
+ * Fill in the Blank uses this to compare only the removed words: grading the reassembled
+ * sentence would flatter the learner, because the words that were never removed are
+ * always right. The attempt log still records the full sentence as the expected answer.
+ */
+export type ScoringOverride = {
+  expected: string;
+  alternatives?: string[];
+  language?: Language;
+};
+
 export type SubmitInput = {
   sessionId: string;
   sentence: Sentence;
@@ -33,6 +46,9 @@ export type SubmitInput = {
   durationMs: number;
   hintUsed: boolean;
   ttsUsed: boolean;
+  scoring?: ScoringOverride;
+  /** What to record in the log when it differs from `userAnswer`, e.g. a filled sentence. */
+  recordedAnswer?: string;
   now?: number;
 };
 
@@ -69,9 +85,17 @@ export async function submitAnswer(input: SubmitInput): Promise<SubmitOutcome> {
   const id = makeProgressId("sentence", input.sentence.id, direction);
 
   const settings = await loadSettings(now);
-  const result = checkAnswer(input.userAnswer, expected.text, {
-    language: expected.language,
-    alternatives: expected.alternatives,
+  const target = input.scoring
+    ? {
+        text: input.scoring.expected,
+        alternatives: input.scoring.alternatives ?? [],
+        language: input.scoring.language ?? expected.language,
+      }
+    : expected;
+
+  const result = checkAnswer(input.userAnswer, target.text, {
+    language: target.language,
+    alternatives: target.alternatives,
     ignoreCase: settings.ignoreCase,
     ignorePunctuation: settings.ignorePunctuation,
   });
@@ -95,7 +119,7 @@ export async function submitAnswer(input: SubmitInput): Promise<SubmitOutcome> {
     direction,
     mode: input.mode,
     prompt: direction === "en2th" ? input.sentence.en : input.sentence.th,
-    userAnswer: input.userAnswer,
+    userAnswer: input.recordedAnswer ?? input.userAnswer,
     expectedAnswer: expected.text,
     verdict,
     grade: GRADE_BY_RATING[rating],

@@ -12,12 +12,29 @@ import {
   cardsCompletedToday,
   skipCard,
   submitAnswer,
+  type ScoringOverride,
   type SubmitOutcome,
 } from "@/lib/study";
+import {
+  createFillBlankPuzzle,
+  createWordOrderPuzzle,
+  fillIn,
+  joinTokens,
+  scoreBlanks,
+  MODE_INFO,
+  type FillBlankPuzzle,
+  type ImplementedMode,
+  type Token,
+  type WordOrderPuzzle,
+} from "@/lib/exercises";
 import { currentStreak } from "@/lib/gamification";
 import { newId } from "@/lib/utils/id";
+import type { RecognitionFailure } from "@/lib/speech/stt";
 
 export type StudyPhase = "idle" | "loading" | "prompt" | "graded" | "finished" | "error";
+
+/** Speaking mode only: the microphone is off until the learner explicitly enables it. */
+export type MicState = "idle" | "consented" | "listening" | "failed";
 
 type StudyState = {
   phase: StudyPhase;
@@ -25,6 +42,7 @@ type StudyState = {
 
   sessionId: string | null;
   category: Category | null;
+  mode: ImplementedMode;
   cards: Sentence[];
   index: number;
   vocabulary: VocabularyEntry[];
@@ -33,8 +51,20 @@ type StudyState = {
   hintUsed: boolean;
   ttsUsed: boolean;
   cardStartedAt: number;
-  /** Guards against a double submit from a fast second Enter press. */
   submitting: boolean;
+
+  /** Sentence Builder. */
+  wordOrder: WordOrderPuzzle | null;
+  placed: Token[];
+
+  /** Fill in the Blank. */
+  fillBlank: FillBlankPuzzle | null;
+  blankAnswers: string[];
+
+  /** Speaking. */
+  micState: MicState;
+  micFailure: RecognitionFailure | null;
+  transcript: string | null;
 
   outcome: SubmitOutcome | null;
   sessionXp: number;
@@ -42,15 +72,23 @@ type StudyState = {
   dailyGoal: number;
   streak: number;
 
-  start: (category: Category) => Promise<void>;
+  start: (category: Category, mode: ImplementedMode) => Promise<void>;
   setAnswer: (value: string) => void;
+  placeToken: (token: Token) => void;
+  removeToken: (id: string) => void;
+  clearPlaced: () => void;
+  setBlankAnswer: (index: number, value: string) => void;
+  setMicState: (state: MicState) => void;
+  setMicFailure: (failure: RecognitionFailure | null) => void;
+  setTranscript: (transcript: string) => void;
   showHint: () => void;
   markTtsUsed: () => void;
-  submit: () => Promise<void>;
+  submit: (options?: { selfAssessedPass?: boolean; force?: boolean }) => Promise<void>;
+  /** Speaking only: grade by the learner's own judgement when transcription cannot. */
+  selfAssess: (pass: boolean) => Promise<void>;
   retry: () => void;
   skip: () => Promise<void>;
   next: () => Promise<void>;
-  reset: () => void;
 };
 
 const BLANK = {
@@ -59,12 +97,31 @@ const BLANK = {
   ttsUsed: false,
   outcome: null,
   submitting: false,
+  placed: [] as Token[],
+  blankAnswers: [] as string[],
+  micState: "idle" as MicState,
+  micFailure: null as RecognitionFailure | null,
+  transcript: null as string | null,
 };
 
 async function loadVocabulary(sentence: Sentence | undefined): Promise<VocabularyEntry[]> {
   if (!sentence) return [];
   const entries = await Promise.all(sentence.vocabIds.map((id) => getVocabularyEntry(id)));
   return entries.filter((e): e is VocabularyEntry => e !== undefined);
+}
+
+/** Builds the per-mode puzzle for a card. Deterministic, so a reload shows the same one. */
+function puzzlesFor(sentence: Sentence | undefined, mode: ImplementedMode) {
+  if (!sentence) return { wordOrder: null, fillBlank: null, blankAnswers: [] };
+
+  if (mode === "wordOrder") {
+    return { wordOrder: createWordOrderPuzzle(sentence.th, "th"), fillBlank: null, blankAnswers: [] };
+  }
+  if (mode === "fillBlank") {
+    const puzzle = createFillBlankPuzzle(sentence.en, "en");
+    return { wordOrder: null, fillBlank: puzzle, blankAnswers: puzzle.blanks.map(() => "") };
+  }
+  return { wordOrder: null, fillBlank: null, blankAnswers: [] };
 }
 
 async function readDailyTotals(settings: Settings, now: number) {
@@ -81,6 +138,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   error: null,
   sessionId: null,
   category: null,
+  mode: "dictation",
   cards: [],
   index: 0,
   vocabulary: [],
@@ -89,15 +147,17 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   cardsToday: 0,
   dailyGoal: 0,
   streak: 0,
+  wordOrder: null,
+  fillBlank: null,
   ...BLANK,
 
-  start: async (category) => {
-    set({ phase: "loading", error: null, category, sessionXp: 0, index: 0, ...BLANK });
+  start: async (category, mode) => {
+    set({ phase: "loading", error: null, category, mode, sessionXp: 0, index: 0, ...BLANK });
     try {
       const now = Date.now();
       await seedDatabase();
       const settings = await loadSettings(now);
-      const cards = await buildStudyQueue(category, settings, now);
+      const cards = await buildStudyQueue(category, settings, now, MODE_INFO[mode].direction);
       const totals = await readDailyTotals(settings, now);
 
       const sessionId = newId(now);
@@ -120,6 +180,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         vocabulary: await loadVocabulary(cards[0]),
         phase: cards.length === 0 ? "finished" : "prompt",
         cardStartedAt: now,
+        ...puzzlesFor(cards[0], mode),
         ...totals,
       });
     } catch (error) {
@@ -128,25 +189,68 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   },
 
   setAnswer: (value) => set({ answer: value }),
+
+  placeToken: (token) => set((s) => ({ placed: [...s.placed, token] })),
+  removeToken: (id) => set((s) => ({ placed: s.placed.filter((t) => t.id !== id) })),
+  clearPlaced: () => set({ placed: [] }),
+
+  setBlankAnswer: (index, value) =>
+    set((s) => {
+      const next = [...s.blankAnswers];
+      next[index] = value;
+      return { blankAnswers: next };
+    }),
+
+  setMicState: (micState) => set({ micState }),
+  setMicFailure: (micFailure) => set({ micFailure, micState: micFailure ? "failed" : "idle" }),
+  setTranscript: (transcript) => set({ transcript, answer: transcript }),
+
   showHint: () => set({ hintUsed: true }),
   markTtsUsed: () => set({ ttsUsed: true }),
 
-  submit: async () => {
-    const { cards, index, sessionId, answer, hintUsed, ttsUsed, cardStartedAt, submitting, phase } = get();
+  submit: async (options = {}) => {
+    const state = get();
+    const { cards, index, sessionId, mode, submitting, phase } = state;
     const sentence = cards[index];
     if (!sentence || !sessionId || submitting || phase !== "prompt") return;
-    if (answer.trim().length === 0) return;
+
+    let userAnswer = state.answer;
+    let scoring: ScoringOverride | undefined;
+    let recordedAnswer: string | undefined;
+
+    if (mode === "wordOrder") {
+      if (!state.wordOrder || state.placed.length === 0) return;
+      userAnswer = joinTokens(state.placed, "th");
+    } else if (mode === "fillBlank") {
+      if (!state.fillBlank) return;
+      if (state.blankAnswers.every((v) => v.trim().length === 0)) return;
+      const { expected, received } = scoreBlanks(state.fillBlank, state.blankAnswers);
+      userAnswer = received;
+      scoring = { expected, language: "en" };
+      recordedAnswer = fillIn(state.fillBlank, state.blankAnswers);
+    } else if (!options.force && userAnswer.trim().length === 0) {
+      return;
+    }
+
+    // A transcript the learner says was misheard is graded against itself, so recognition
+    // error cannot mark a correctly spoken sentence wrong.
+    if (options.selfAssessedPass) {
+      scoring = { expected: userAnswer, language: MODE_INFO[mode].answerLanguage };
+    }
 
     set({ submitting: true });
     try {
       const outcome = await submitAnswer({
         sessionId,
         sentence,
-        mode: "dictation",
-        userAnswer: answer,
-        durationMs: Date.now() - cardStartedAt,
-        hintUsed,
-        ttsUsed,
+        mode,
+        direction: MODE_INFO[mode].direction,
+        userAnswer,
+        scoring,
+        recordedAnswer,
+        durationMs: Date.now() - state.cardStartedAt,
+        hintUsed: state.hintUsed,
+        ttsUsed: state.ttsUsed,
       });
       set((s) => ({
         outcome,
@@ -165,11 +269,34 @@ export const useStudyStore = create<StudyState>((set, get) => ({
     }
   },
 
-  /** Clears the graded state so the same card can be attempted again. */
-  retry: () => set({ ...BLANK, phase: "prompt", cardStartedAt: Date.now() }),
+  /**
+   * Grades a spoken answer by the learner's own judgement.
+   *
+   * A pass is scored against itself, so a transcript the learner says was misheard — or
+   * an attempt with no transcript at all — cannot be marked wrong by recognition error.
+   * This is the fallback for every failure case, and it is why a missing microphone
+   * never blocks the mode.
+   */
+  selfAssess: async (pass) => {
+    const { cards, index, mode } = get();
+    const sentence = cards[index];
+    if (!sentence) return;
+
+    const target = MODE_INFO[mode].answerLanguage === "th" ? sentence.th : sentence.en;
+    set({ phase: "prompt", answer: pass ? target : "" });
+    await get().submit({ selfAssessedPass: pass, force: true });
+  },
+
+  retry: () =>
+    set((s) => ({
+      ...BLANK,
+      phase: "prompt",
+      cardStartedAt: Date.now(),
+      ...puzzlesFor(s.cards[s.index], s.mode),
+    })),
 
   skip: async () => {
-    const { cards, index, sessionId, cardStartedAt, submitting } = get();
+    const { cards, index, sessionId, mode, cardStartedAt, submitting } = get();
     const sentence = cards[index];
     if (!sentence || !sessionId || submitting) return;
 
@@ -178,7 +305,8 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       await skipCard({
         sessionId,
         sentence,
-        mode: "dictation",
+        mode,
+        direction: MODE_INFO[mode].direction,
         durationMs: Date.now() - cardStartedAt,
       });
       set({ submitting: false });
@@ -193,10 +321,10 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   },
 
   next: async () => {
-    const { cards, index } = get();
+    const { cards, index, mode } = get();
     const nextIndex = index + 1;
     if (nextIndex >= cards.length) {
-      set({ phase: "finished", ...BLANK });
+      set({ phase: "finished", wordOrder: null, fillBlank: null, ...BLANK });
       return;
     }
     set({
@@ -204,9 +332,9 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       phase: "prompt",
       cardStartedAt: Date.now(),
       vocabulary: await loadVocabulary(cards[nextIndex]),
+      // BLANK first: it resets blankAnswers, which the puzzle then sizes to its blanks.
       ...BLANK,
+      ...puzzlesFor(cards[nextIndex], mode),
     });
   },
-
-  reset: () => set({ phase: "idle", sessionId: null, cards: [], index: 0, sessionXp: 0, ...BLANK }),
 }));
