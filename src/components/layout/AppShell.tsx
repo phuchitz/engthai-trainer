@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, type NavItem } from "./routes";
 import { NavIcon } from "./NavIcon";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -35,28 +36,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-full flex-col md:flex-row">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-3 focus:rounded-md focus:bg-accent focus:px-4 focus:py-2 focus:text-accent-foreground"
+        className="focus:bg-accent focus:text-accent-foreground sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-3 focus:rounded-md focus:px-4 focus:py-2"
       >
         Skip to content
       </a>
 
-      <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-surface px-4 py-3 md:hidden">
+      <header className="border-border bg-surface sticky top-0 z-30 flex items-center justify-between gap-2 border-b px-4 py-3 md:hidden">
         <span className="font-semibold tracking-tight">EngThai Trainer</span>
+        <ThemeToggle />
       </header>
 
       <nav
         aria-label="Main"
-        className="hidden w-60 shrink-0 border-r border-border bg-surface p-3 md:flex md:flex-col md:gap-1"
+        className="border-border bg-surface hidden w-60 shrink-0 border-r p-3 md:flex md:flex-col md:gap-1"
       >
-        <div className="px-3 pb-4 pt-2">
+        <div className="px-3 pt-2 pb-4">
           <p className="font-semibold tracking-tight">EngThai Trainer</p>
-          <p className="text-xs text-muted" lang="th">
+          <p className="text-muted text-xs" lang="th">
             ฝึกประโยคอังกฤษ–ไทย
           </p>
         </div>
         {NAV_ITEMS.map((item) => (
           <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} />
         ))}
+        <div className="mt-auto px-1 pt-4">
+          <ThemeToggle />
+        </div>
       </nav>
 
       <main id="main" className="flex-1 pb-20 md:pb-0">
@@ -65,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="border-border bg-surface fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {primary.map((item) => {
           const active = isActive(pathname, item.href);

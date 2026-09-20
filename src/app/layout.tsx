@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_Thai } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
+import { THEME_INIT_SCRIPT } from "@/components/theme/theme";
 import "./globals.css";
 
 const latin = Inter({ variable: "--font-latin", subsets: ["latin"], display: "swap" });
@@ -21,7 +22,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${latin.variable} ${thai.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${latin.variable} ${thai.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
       </body>

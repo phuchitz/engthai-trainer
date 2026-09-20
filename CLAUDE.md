@@ -26,12 +26,21 @@ word-order / tap-to-build exercises; free-typed Thai is opt-in.
 ## Data
 
 Eight IndexedDB stores: `lessons`, `sentences`, `vocab`, `progress`, `attempts`,
-`sessions`, `settings`, `meta`. `progress` is keyed per *(item, direction)* so the two
+`sessions`, `settings`, `meta`. `progress` is keyed per _(item, direction)_ so the two
 directions schedule independently. `attempts` is append-only — every dashboard figure
 is derived from it, never from a stored counter.
 
-Migrations are a fall-through ladder (`if (oldVersion < N)`, no `else`) in
-`lib/db/migrations/`, each one a named, separately tested function.
+Timestamps are epoch milliseconds throughout, because numbers index and range-query
+cleanly in IndexedDB.
+
+Migrations are an append-only ladder in `lib/db/migrations/`: each version is a named,
+separately tested `Migration`, and `migrationsToRun` replays every step a database is
+behind, in order. **Never edit a released migration** — a learner three versions behind
+replays it, so changing it changes their history.
+
+Theme is deliberately not in the settings store: it must be readable synchronously
+before first paint to avoid a flash, so it lives in localStorage and is read by a
+pre-paint script in the root layout.
 
 ## Commands
 

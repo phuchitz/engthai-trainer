@@ -14,8 +14,9 @@
   --warning: #a16207;
 }
 
+/* Dark values live in one place; both selectors below pull them in. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #16140f;
     --surface: #211e18;
     --surface-muted: #2b2720;
@@ -30,6 +31,20 @@
   }
 }
 
+:root[data-theme="dark"] {
+  --background: #16140f;
+  --surface: #211e18;
+  --surface-muted: #2b2720;
+  --foreground: #f5f0e8;
+  --muted: #a8a29e;
+  --border: #3a352c;
+  --accent: #f0a83c;
+  --accent-foreground: #1c1917;
+  --success: #4ade80;
+  --danger: #f87171;
+  --warning: #fbbf24;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
@@ -42,8 +57,8 @@
   --color-success: var(--success);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
+  /* Per-character fallback: Inter lacks Thai glyphs, so Thai text falls through to Noto. */
   --font-sans: var(--font-latin), var(--font-thai), system-ui, sans-serif;
-  --font-thai: var(--font-thai), var(--font-latin), system-ui, sans-serif;
 }
 
 body {
@@ -54,7 +69,6 @@ body {
 
 /* Thai needs more leading than Latin: vowel signs stack above and below the line. */
 :lang(th) {
-  font-family: var(--font-thai), var(--font-latin), system-ui, sans-serif;
   line-height: 1.85;
 }
 

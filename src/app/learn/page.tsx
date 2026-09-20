@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Placeholder } from "@/components/common/Placeholder";
+import { LearnScreen } from "@/components/screens/LearnScreen";
 
 export const metadata: Metadata = { title: "Learn" };
 
@@ -12,9 +12,7 @@ export default function LearnPage() {
         titleTh="เรียน"
         description="The exercise loop: prompt, answer, check, grade, next."
       />
-      <Placeholder session={5}>
-        The core learning flow is built once the answer engine and scheduler are proven.
-      </Placeholder>
+      <LearnScreen />
     </>
   );
 }

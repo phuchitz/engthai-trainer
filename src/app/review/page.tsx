@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Placeholder } from "@/components/common/Placeholder";
+import { ReviewScreen } from "@/components/screens/ReviewScreen";
 
 export const metadata: Metadata = { title: "Review" };
 
@@ -12,9 +12,7 @@ export default function ReviewPage() {
         titleTh="ทบทวน"
         description="Everything the scheduler says is due today, in one mixed queue."
       />
-      <Placeholder session={7}>
-        Due-queue building lands with the scheduler in session 4; the screen itself in session 7.
-      </Placeholder>
+      <ReviewScreen />
     </>
   );
 }

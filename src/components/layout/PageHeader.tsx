@@ -11,11 +11,11 @@ export function PageHeader({
     <header className="mb-6">
       <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
       {titleTh ? (
-        <p className="text-sm text-muted" lang="th">
+        <p className="text-muted text-sm" lang="th">
           {titleTh}
         </p>
       ) : null}
-      {description ? <p className="mt-2 text-sm text-muted">{description}</p> : null}
+      {description ? <p className="text-muted mt-2 text-sm">{description}</p> : null}
     </header>
   );
 }

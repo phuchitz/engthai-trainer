@@ -7,13 +7,15 @@
     "build": "next build",
     "preview": "serve out -l 3100",
     "lint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+    "check": "npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build"
   },
   "dependencies": {
     "idb": "^8.0.3",
@@ -37,8 +39,11 @@
     "@vitest/coverage-v8": "5.0.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "eslint-config-prettier": "^10.1.8",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
+    "prettier": "^3.9.8",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "serve": "^14.2.6",
     "tailwindcss": "^4",
     "typescript": "^5",

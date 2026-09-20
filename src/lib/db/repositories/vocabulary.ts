@@ -1,0 +1,42 @@
+import { getDatabase } from "../client";
+import { vocabularyEntrySchema, type VocabularyEntry } from "@/lib/models";
+
+export async function putVocabularyEntry(entry: VocabularyEntry): Promise<VocabularyEntry> {
+  const parsed = vocabularyEntrySchema.parse(entry);
+  const db = await getDatabase();
+  await db.put("vocab", parsed);
+  return parsed;
+}
+
+export async function putVocabularyEntries(entries: VocabularyEntry[]): Promise<void> {
+  const parsed = entries.map((e) => vocabularyEntrySchema.parse(e));
+  const db = await getDatabase();
+  const tx = db.transaction("vocab", "readwrite");
+  await Promise.all(parsed.map((e) => tx.store.put(e)));
+  await tx.done;
+}
+
+export async function getVocabularyEntry(id: string): Promise<VocabularyEntry | undefined> {
+  const db = await getDatabase();
+  return db.get("vocab", id);
+}
+
+export async function listVocabulary(): Promise<VocabularyEntry[]> {
+  const db = await getDatabase();
+  return db.getAll("vocab");
+}
+
+export async function findVocabularyByEnglish(en: string): Promise<VocabularyEntry[]> {
+  const db = await getDatabase();
+  return db.getAllFromIndex("vocab", "by-en", en);
+}
+
+export async function deleteVocabularyEntry(id: string): Promise<void> {
+  const db = await getDatabase();
+  await db.delete("vocab", id);
+}
+
+export async function countVocabulary(): Promise<number> {
+  const db = await getDatabase();
+  return db.count("vocab");
+}

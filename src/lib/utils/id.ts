@@ -53,6 +53,10 @@ export function isId(value: unknown): value is string {
 }
 
 /** Deterministic key for a progress row, so re-imports merge instead of duplicating. */
-export function progressId(itemType: "sentence" | "vocab", itemId: string, direction: "en2th" | "th2en"): string {
+export function progressId(
+  itemType: "sentence" | "vocab",
+  itemId: string,
+  direction: "en2th" | "th2en",
+): string {
   return `${itemType}:${itemId}:${direction}`;
 }
