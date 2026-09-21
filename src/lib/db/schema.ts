@@ -12,7 +12,7 @@ import type {
 export const DB_NAME = "engthai-trainer";
 
 /** Bump together with a new entry in lib/db/migrations. */
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 export type MetaRecord = {
   key: string;

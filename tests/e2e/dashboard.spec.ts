@@ -117,7 +117,8 @@ test.describe("Session summary", () => {
     await answerTranslate(page, "I have no blockers today");
     await page.getByRole("button", { name: /^Next/ }).click();
 
-    await page.getByRole("link", { name: "Dashboard" }).click();
+    // Scoped: the sidebar has a Dashboard link too.
+    await page.locator("#main").getByRole("link", { name: "Dashboard" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
   });
 });

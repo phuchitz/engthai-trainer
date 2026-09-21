@@ -37,14 +37,25 @@ export const settingsSchema = z.object({
 
   uiLanguage: z.enum(["th", "en"]).default("en"),
 
+  /**
+   * Optional AI, off by default.
+   *
+   * There is deliberately **no credential field here**. Settings are persisted to
+   * IndexedDB and included in every backup file, so a key stored here would be written
+   * to disk in plain text and copied into every export. A credentialed provider must
+   * live behind a server-side adapter that holds its own secret — see docs/ai.md.
+   *
+   * `consentGivenAt` records when the learner explicitly agreed to send learning content
+   * to a provider. Null means no consent, which is the default and blocks every call.
+   */
   ai: z
     .object({
       enabled: z.boolean().default(false),
       provider: aiProviderSchema.default("none"),
-      apiKey: z.string().max(200).nullable().default(null),
       model: z.string().max(120).nullable().default(null),
+      consentGivenAt: timestampSchema.nullable().default(null),
     })
-    .default({ enabled: false, provider: "none", apiKey: null, model: null }),
+    .default({ enabled: false, provider: "none", model: null, consentGivenAt: null }),
 
   streak: z
     .object({

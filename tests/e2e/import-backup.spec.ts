@@ -228,5 +228,5 @@ test("settings expose audio preferences and an honest AI status", async ({ page 
   await expect(page.getByRole("switch", { name: "Feedback sounds" })).toBeVisible();
   await expect(page.getByRole("switch", { name: "Spoken audio" })).toBeVisible();
   await expect(page.getByLabel("Speech rate")).toBeVisible();
-  await expect(page.getByText("Not configured")).toBeVisible();
+  await expect(page.getByText("Not configured", { exact: true })).toBeVisible();
 });

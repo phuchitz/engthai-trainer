@@ -115,6 +115,27 @@ that edits a sentence or word must set `source` to `"user"`**, which makes it pe
 theirs. Without the refresh, an improved translation or a new vocabulary link could only
 ever reach a fresh install.
 
+## Optional AI
+
+Off by default, and **this build registers no provider at all**. `src/lib/ai` is
+documented in [docs/ai.md](docs/ai.md).
+
+- **No credential lives anywhere in this app.** Not in code, an env var, localStorage,
+  IndexedDB or a commit — this is a static export, so anything the browser holds is
+  public. The settings schema deliberately has no key field, and **migration v5 strips
+  `ai.apiKey`** from any row that still has one. A credentialed provider needs a
+  server-side adapter holding its own secret; that adapter is not built here.
+- **`disabledProvider` is a real implementation that refuses every call**, not a `null`
+  callers must check. The AI paths run on every load, so no feature can quietly come to
+  depend on AI being present.
+- **Two consent gates**, both checked _before_ a request is built: a provider must be
+  configured and on, **and** `ai.consentGivenAt` must be set. Enabling is not agreement.
+- **Every response is validated with Zod** before use — `runCapability` re-validates
+  even when the provider's types already claim the right shape. No AI schema can supply
+  an IPA or a dictionary entry; the word panel stays hand-written only.
+- The Settings disclosure is generated from the request objects, so it cannot drift away
+  from the payload.
+
 ## Import, export and backup
 
 Documented in [docs/import-export.md](docs/import-export.md): field defaults, CSV and
