@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_Thai } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
+import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
 import { THEME_INIT_SCRIPT } from "@/components/theme/theme";
 import "./globals.css";
 
@@ -11,6 +12,15 @@ export const metadata: Metadata = {
   title: { default: "EngThai Trainer", template: "%s · EngThai Trainer" },
   description: "Local-first English–Thai sentence training. Works offline, stores nothing on a server.",
   applicationName: "EngThai Trainer",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "EngThai", statusBarStyle: "default" },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -32,6 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

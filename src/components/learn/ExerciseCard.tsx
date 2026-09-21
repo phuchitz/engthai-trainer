@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
-import { BAND_LABELS } from "@/lib/answer";
+import { announceResult, BAND_LABELS } from "@/lib/answer";
 import { CATEGORY_INFO } from "@/lib/models";
 import { MODE_INFO } from "@/lib/exercises";
 import { hasVoiceFor, isSpeechSupported, speak } from "@/lib/speech/tts";
@@ -146,6 +146,19 @@ export function ExerciseCard() {
 
   return (
     <div className="space-y-5">
+      {/* The grade is a colour, a percentage and a colour-coded diff on screen, none of
+          which reads aloud. This region is mounted for the whole session so a change to
+          its text is announced; it restates the verdict, the score and the wrong words. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {graded && outcome
+          ? announceResult(outcome.result, {
+              xpAwarded: outcome.xpAwarded,
+              transcriptOnly: mode === "speak",
+              blanksOnly: mode === "fillBlank",
+            })
+          : ""}
+      </p>
+
       <div className="text-muted flex flex-wrap items-center justify-between gap-2 text-xs">
         <span>
           Card {index + 1} of {cards.length}

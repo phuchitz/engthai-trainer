@@ -11,7 +11,11 @@ export function WordOrderInput() {
 
   return (
     <div className="space-y-3">
-      <div className="border-border bg-background min-h-16 rounded-lg border p-3">
+      <div
+        role="group"
+        aria-label="Your sentence"
+        className="border-border bg-background min-h-16 rounded-lg border p-3"
+      >
         {placed.length === 0 ? (
           <p className="text-muted text-sm">Tap the words below to build the sentence.</p>
         ) : (

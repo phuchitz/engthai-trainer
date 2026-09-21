@@ -62,7 +62,7 @@ test("completes a dictation card and awards XP", async ({ page }) => {
 
   await answer(page, "where are you going");
 
-  await expect(page.getByText("Perfect")).toBeVisible();
+  await expect(page.getByText("Perfect", { exact: true })).toBeVisible();
   await expect(page.getByText("100%")).toBeVisible();
   await expect(page.getByText(CARD_1)).toBeVisible();
   await expect(page.getByText("+10 XP").first()).toBeVisible();
@@ -74,7 +74,7 @@ test("shows word-level feedback for a near miss", async ({ page }) => {
   await page.goto("/learn/?category=daily");
   await answer(page, "where are you");
 
-  await expect(page.getByText("Good")).toBeVisible();
+  await expect(page.getByText("Good", { exact: true })).toBeVisible();
   await expect(page.getByText("75%")).toBeVisible();
 });
 
@@ -85,7 +85,7 @@ test("Enter submits and then advances to the next card", async ({ page }) => {
   await field.fill("where are you going");
   await field.press("Enter");
 
-  await expect(page.getByText("Perfect")).toBeVisible();
+  await expect(page.getByText("Perfect", { exact: true })).toBeVisible();
 
   await page.keyboard.press("Enter");
   await expect(page.getByText("Card 2 of 3")).toBeVisible();

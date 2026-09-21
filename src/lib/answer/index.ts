@@ -11,5 +11,8 @@ export type { AlignOp, Alignment } from "./diff";
 export { accuracyFromAlignment, bandFor, BANDS, BAND_LABELS, BAND_THRESHOLDS } from "./score";
 export type { Band } from "./score";
 
+export { announceResult } from "./announce";
+export type { AnnounceOptions } from "./announce";
+
 export { checkAnswer } from "./check";
 export type { CheckOptions, CheckResult } from "./check";

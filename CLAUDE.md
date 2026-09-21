@@ -190,10 +190,34 @@ memory. That is what makes them survive a refresh, a resubmission or a second ta
   a card until it is right cannot buy a longer interval.
 - A skip is logged but is never a success: no XP, no schedule move, and the card stays due.
 
+## Offline, installation and accessibility
+
+Both documented in [docs/pwa-and-accessibility.md](docs/pwa-and-accessibility.md).
+
+- **The service worker's precache list is generated from `out/`**, by
+  `scripts/generate-sw.mjs` after `next build`. Chunk names are content hashes, so a
+  hand-written list goes stale the first time a chunk changes — and a shell missing one
+  chunk is a shell that does not open. The cache name is a hash of the whole build, so a
+  rebuild can never mix two builds' chunks.
+- **Offline, an unknown URL gets a 404, never the dashboard.** A wrong page claiming to
+  be the right one is worse offline, because nothing arrives to correct it.
+- **Nothing is registered in development**, and a leftover production worker on the same
+  origin is unregistered.
+- **Contrast is a unit test, not a judgement call.** `tests/unit/contrast.test.ts` parses
+  `globals.css` and checks every token pair in both themes. It caught three failures that
+  had been shipping for several sessions.
+- **The focus rule uses element selectors, not `:where()`**, because several inputs carry
+  Tailwind's `outline-none` and a zero-specificity selector would lose to it.
+- **A grade is announced in words.** `announceResult` restates the verdict, the score and
+  the specific wrong words, because the visible feedback is a colour. Its live region is
+  mounted for the whole session and empty until needed — a region added at the same
+  moment as its text is routinely missed.
+
 ## Commands
 
 ```
 npm run check   # typecheck + lint + unit + build
+npm run icons   # redraw the PWA icons from scripts/generate-icons.mjs
 npm run dev     # dev server
 npm run e2e     # Playwright against the static export
 ```

@@ -22,7 +22,7 @@ test.describe("Sentence Builder", () => {
     }
 
     await check(page).click();
-    await expect(page.getByText("Perfect")).toBeVisible();
+    await expect(page.getByText("Perfect", { exact: true })).toBeVisible();
     await expect(page.getByText("+10 XP").first()).toBeVisible();
   });
 
@@ -46,7 +46,7 @@ test.describe("Sentence Builder", () => {
     }
 
     await check(page).click();
-    await expect(page.getByText("Try Again")).toBeVisible();
+    await expect(page.getByText("Try Again", { exact: true })).toBeVisible();
   });
 
   test("uses a separate schedule from the English modes", async ({ page }) => {
@@ -79,10 +79,10 @@ test.describe("Fill in the Blank", () => {
     await blanks.nth(1).fill("before");
     await check(page).click();
 
-    await expect(page.getByText("Only the missing words were scored.")).toBeVisible();
+    await expect(page.getByText("Only the missing words were scored.", { exact: true })).toBeVisible();
     // Half the blanks are wrong, so this must land far below the ~83% a whole-sentence
     // grade would have produced.
-    await expect(page.getByText("Try Again")).toBeVisible();
+    await expect(page.getByText("Try Again", { exact: true })).toBeVisible();
   });
 
   test("passes when every blank is right", async ({ page }) => {
@@ -93,7 +93,7 @@ test.describe("Fill in the Blank", () => {
     await blanks.nth(1).fill("after");
     await check(page).click();
 
-    await expect(page.getByText("Perfect")).toBeVisible();
+    await expect(page.getByText("Perfect", { exact: true })).toBeVisible();
   });
 });
 
@@ -105,7 +105,7 @@ test.describe("Thai to English", () => {
     await page.getByLabel("Translate this sentence into English").fill("I have no blockers today");
     await check(page).click();
 
-    await expect(page.getByText("Perfect")).toBeVisible();
+    await expect(page.getByText("Perfect", { exact: true })).toBeVisible();
     await expect(page.getByText("100%")).toBeVisible();
   });
 });
@@ -161,7 +161,7 @@ test.describe("Speaking", () => {
     await page.getByRole("button", { name: "Practise without the microphone instead" }).click();
     await page.getByRole("button", { name: "I struggled with it" }).click();
 
-    await expect(page.getByText("Try Again")).toBeVisible();
+    await expect(page.getByText("Try Again", { exact: true })).toBeVisible();
     await expect(page.getByText("No XP — that answer was not a pass.")).toBeVisible();
   });
 });
