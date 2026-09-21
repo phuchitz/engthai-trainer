@@ -1,5 +1,5 @@
 import { checkAnswer, type Band, type CheckResult, type Language } from "@/lib/answer";
-import { advanceStreak, xpForAnswer } from "@/lib/gamification";
+import { advanceStreak, sentencesCompletedToday, xpForAnswer } from "@/lib/gamification";
 import type { Attempt, Direction, ExerciseMode, Grade, Sentence, Verdict } from "@/lib/models";
 import { defaultScheduler, ratingFromResult, type Rating } from "@/lib/srs";
 import { addAttempt, listAttemptsOnLocalDay } from "@/lib/db/repositories/attempts";
@@ -63,6 +63,8 @@ export type SubmitOutcome = {
   nextReviewAt: number | null;
   streak: number;
   cardsCompletedToday: number;
+  /** Distinct sentences passed today — what the daily goal counts. */
+  sentencesCompletedToday: number;
 };
 
 function expectedFor(sentence: Sentence, direction: Direction) {
@@ -127,6 +129,7 @@ export async function submitAnswer(input: SubmitInput): Promise<SubmitOutcome> {
     durationMs: input.durationMs,
     hintUsed: input.hintUsed,
     ttsUsed: input.ttsUsed,
+    xpAwarded,
     createdAt: now,
   };
   await addAttempt(attempt);
@@ -161,6 +164,7 @@ export async function submitAnswer(input: SubmitInput): Promise<SubmitOutcome> {
     nextReviewAt,
     streak: streak.current,
     cardsCompletedToday: cardsCompletedToday([...todaysAttempts, attempt], now),
+    sentencesCompletedToday: sentencesCompletedToday([...todaysAttempts, attempt], now),
   };
 }
 
@@ -201,6 +205,7 @@ export async function skipCard(input: SkipInput): Promise<void> {
     durationMs: input.durationMs,
     hintUsed: false,
     ttsUsed: false,
+    xpAwarded: 0,
     createdAt: now,
   });
 }

@@ -10,6 +10,7 @@ import { getVocabularyEntry } from "@/lib/db/repositories/vocabulary";
 import {
   buildReviewQueue,
   buildStudyQueue,
+  loadDashboard,
   cardsCompletedToday,
   skipCard,
   submitAnswer,
@@ -30,7 +31,13 @@ import {
   type Token,
   type WordOrderPuzzle,
 } from "@/lib/exercises";
-import { currentStreak } from "@/lib/gamification";
+import {
+  currentStreak,
+  newlyUnlocked,
+  StudyTimer,
+  type Achievement,
+  type AchievementStats,
+} from "@/lib/gamification";
 import { newId } from "@/lib/utils/id";
 import type { RecognitionFailure } from "@/lib/speech/stt";
 
@@ -46,6 +53,16 @@ export type SessionSource =
 export function sourceKey(source: SessionSource): string {
   return source.kind === "lesson" ? `lesson:${source.category}:${source.mode}` : `review:${source.review}`;
 }
+
+export type SessionSummary = {
+  answered: number;
+  passed: number;
+  skipped: number;
+  xp: number;
+  activeMs: number;
+  accuracyPercent: number;
+  unlocked: Achievement[];
+};
 
 type StudyState = {
   phase: StudyPhase;
@@ -64,7 +81,8 @@ type StudyState = {
   answer: string;
   hintUsed: boolean;
   ttsUsed: boolean;
-  cardStartedAt: number;
+  /** Per-card active-time tracker: background and idle stretches are not counted. */
+  timer: StudyTimer | null;
   submitting: boolean;
 
   wordOrder: WordOrderPuzzle | null;
@@ -79,6 +97,12 @@ type StudyState = {
 
   outcome: SubmitOutcome | null;
   sessionXp: number;
+  sessionAnswered: number;
+  sessionPassed: number;
+  sessionSkipped: number;
+  sessionActiveMs: number;
+  statsAtStart: AchievementStats | null;
+  summary: SessionSummary | null;
   cardsToday: number;
   dailyGoal: number;
   streak: number;
@@ -86,6 +110,9 @@ type StudyState = {
   startLesson: (category: Category, mode: ImplementedMode) => Promise<void>;
   startReview: (review: ReviewKind) => Promise<void>;
   setAnswer: (value: string) => void;
+  /** Any sign of life; keeps the active-time clock running. */
+  markActivity: () => void;
+  setHidden: (hidden: boolean) => void;
   placeToken: (token: Token) => void;
   removeToken: (id: string) => void;
   clearPlaced: () => void;
@@ -108,6 +135,7 @@ const BLANK = {
   ttsUsed: false,
   outcome: null,
   submitting: false,
+  timer: null as StudyTimer | null,
   placed: [] as Token[],
   blankAnswers: [] as string[],
   micState: "idle" as MicState,
@@ -152,8 +180,13 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   cards: [],
   index: 0,
   vocabulary: [],
-  cardStartedAt: 0,
   sessionXp: 0,
+  sessionAnswered: 0,
+  sessionPassed: 0,
+  sessionSkipped: 0,
+  sessionActiveMs: 0,
+  statsAtStart: null,
+  summary: null,
   cardsToday: 0,
   dailyGoal: 0,
   streak: 0,
@@ -173,7 +206,13 @@ export const useStudyStore = create<StudyState>((set, get) => ({
     await begin({ kind: "review", review }, set, (settings, now) => buildReviewQueue(review, settings, now));
   },
 
-  setAnswer: (value) => set({ answer: value }),
+  setAnswer: (value) => {
+    get().timer?.mark("activity");
+    set({ answer: value });
+  },
+
+  markActivity: () => get().timer?.mark("activity"),
+  setHidden: (hidden) => get().timer?.mark(hidden ? "hidden" : "visible"),
 
   placeToken: (token) => set((s) => ({ placed: [...s.placed, token] })),
   removeToken: (id) => set((s) => ({ placed: s.placed.filter((t) => t.id !== id) })),
@@ -234,16 +273,21 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         userAnswer,
         scoring,
         recordedAnswer,
-        durationMs: Date.now() - state.cardStartedAt,
+        // Active time only: the timer has already discounted background and idle.
+        durationMs: state.timer?.stop() ?? 0,
         hintUsed: state.hintUsed,
         ttsUsed: state.ttsUsed,
       });
+      const passed = outcome.verdict === "correct" || outcome.verdict === "close";
       set((s) => ({
         outcome,
         phase: "graded",
         submitting: false,
         sessionXp: s.sessionXp + outcome.xpAwarded,
-        cardsToday: outcome.cardsCompletedToday,
+        sessionAnswered: s.sessionAnswered + 1,
+        sessionPassed: s.sessionPassed + (passed ? 1 : 0),
+        sessionActiveMs: s.sessionActiveMs + (state.timer?.elapsed() ?? 0),
+        cardsToday: outcome.sentencesCompletedToday,
         streak: outcome.streak,
       }));
     } catch (error) {
@@ -275,12 +319,12 @@ export const useStudyStore = create<StudyState>((set, get) => ({
     set((s) => ({
       ...BLANK,
       phase: "prompt",
-      cardStartedAt: Date.now(),
+      timer: new StudyTimer(),
       ...puzzlesFor(s.cards[s.index]),
     })),
 
   skip: async () => {
-    const { cards, index, sessionId, cardStartedAt, submitting } = get();
+    const { cards, index, sessionId, timer, submitting } = get();
     const card = cards[index];
     if (!card || !sessionId || submitting) return;
 
@@ -291,9 +335,9 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         sentence: card.sentence,
         mode: card.mode,
         direction: MODE_INFO[card.mode].direction,
-        durationMs: Date.now() - cardStartedAt,
+        durationMs: timer?.stop() ?? 0,
       });
-      set({ submitting: false });
+      set((s) => ({ submitting: false, sessionSkipped: s.sessionSkipped + 1 }));
       await get().next();
     } catch (error) {
       set({
@@ -309,16 +353,18 @@ export const useStudyStore = create<StudyState>((set, get) => ({
     const nextIndex = index + 1;
     if (nextIndex >= cards.length) {
       set({ phase: "finished", wordOrder: null, fillBlank: null, ...BLANK });
+      await finish(set, get);
       return;
     }
     set({
       index: nextIndex,
       phase: "prompt",
-      cardStartedAt: Date.now(),
       vocabulary: await loadVocabulary(cards[nextIndex]),
-      // BLANK first: it resets blankAnswers, which the puzzle then sizes to its blanks.
+      // BLANK first: it clears blankAnswers and the timer, which the two lines below
+      // then replace with the values for the new card.
       ...BLANK,
       ...puzzlesFor(cards[nextIndex]),
+      timer: new StudyTimer(),
     });
   },
 }));
@@ -331,7 +377,19 @@ async function begin(
   set: SetState,
   buildCards: (settings: Settings, now: number) => Promise<StudyCard[]>,
 ): Promise<void> {
-  set({ phase: "loading", error: null, source, sessionXp: 0, index: 0, ...BLANK });
+  set({
+    phase: "loading",
+    error: null,
+    source,
+    sessionXp: 0,
+    sessionAnswered: 0,
+    sessionPassed: 0,
+    sessionSkipped: 0,
+    sessionActiveMs: 0,
+    summary: null,
+    index: 0,
+    ...BLANK,
+  });
   try {
     const now = Date.now();
     await seedDatabase();
@@ -353,16 +411,48 @@ async function begin(
       durationMs: 0,
     });
 
+    const before = await loadDashboard(now);
+
     set({
+      statsAtStart: before.stats,
       sessionId,
       cards,
       vocabulary: await loadVocabulary(cards[0]),
       phase: cards.length === 0 ? "finished" : "prompt",
-      cardStartedAt: now,
+      timer: new StudyTimer(now),
       ...puzzlesFor(cards[0]),
       ...totals,
     });
   } catch (error) {
     set({ phase: "error", error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+type GetState = () => StudyState;
+
+/**
+ * Builds the end-of-session summary.
+ *
+ * Achievements are compared against the snapshot taken when the session started, so the
+ * summary reports what *this* session unlocked rather than everything already earned.
+ */
+async function finish(set: SetState, get: GetState): Promise<void> {
+  const { sessionAnswered, sessionPassed, sessionSkipped, sessionXp, sessionActiveMs, statsAtStart } = get();
+
+  try {
+    const after = await loadDashboard();
+    set({
+      summary: {
+        answered: sessionAnswered,
+        passed: sessionPassed,
+        skipped: sessionSkipped,
+        xp: sessionXp,
+        activeMs: sessionActiveMs,
+        accuracyPercent: sessionAnswered === 0 ? 0 : Math.round((sessionPassed / sessionAnswered) * 100),
+        unlocked: statsAtStart ? newlyUnlocked(statsAtStart, after.stats) : [],
+      },
+    });
+  } catch {
+    // A summary is a nicety; failing to build one must not break the finished screen.
   }
 }

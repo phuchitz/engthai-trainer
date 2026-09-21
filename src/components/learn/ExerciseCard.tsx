@@ -6,6 +6,8 @@ import { CATEGORY_INFO } from "@/lib/models";
 import { MODE_INFO } from "@/lib/exercises";
 import { hasVoiceFor, isSpeechSupported, speak } from "@/lib/speech/tts";
 import { useStudyStore } from "@/stores/useStudyStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import { playMiss, playSuccess } from "@/lib/audio/feedback";
 import { NavIcon } from "@/components/layout/NavIcon";
 import { ClickableSentence } from "@/components/vocab/ClickableSentence";
 import { WordPanelHost } from "@/components/vocab/WordPanelHost";
@@ -49,6 +51,8 @@ export function ExerciseCard() {
     streak,
     submitting,
     setAnswer,
+    markActivity,
+    setHidden,
     showHint,
     markTtsUsed,
     submit,
@@ -85,6 +89,13 @@ export function ExerciseCard() {
     if (phase === "prompt" && typesAnswer) inputRef.current?.focus();
   }, [phase, index, typesAnswer]);
 
+  // A backgrounded tab earns no study time.
+  useEffect(() => {
+    const onVisibility = () => setHidden(document.hidden);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [setHidden]);
+
   const canSubmit =
     mode === "wordOrder"
       ? placed.length > 0
@@ -96,6 +107,7 @@ export function ExerciseCard() {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      markActivity();
       if (event.ctrlKey || event.metaKey) return;
 
       // Alt combinations produce no characters, so they stay usable while a text field
@@ -124,7 +136,7 @@ export function ExerciseCard() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [phase, play, showHint, skip, retry, submit, next]);
+  }, [phase, play, showHint, skip, retry, submit, next, markActivity]);
 
   if (!sentence) return null;
 
@@ -310,7 +322,17 @@ function HintPanel() {
 
 function Feedback() {
   const { cards, index, outcome, vocabulary, retry, next, selfAssess } = useStudyStore();
+  const settings = useSettingsStore((s) => s.settings);
   const card = cards[index];
+  const passed = outcome?.verdict === "correct" || outcome?.verdict === "close";
+
+  // One tone per graded answer, only when the learner has turned sound on.
+  useEffect(() => {
+    if (!outcome || !settings?.soundEnabled) return;
+    if (passed) playSuccess();
+    else playMiss();
+  }, [outcome, passed, settings?.soundEnabled]);
+
   if (!outcome || !card) return null;
   const { sentence, mode } = card;
 
@@ -321,7 +343,9 @@ function Feedback() {
   return (
     <div className="border-border bg-surface space-y-4 rounded-xl border p-5">
       <div className="flex items-baseline justify-between gap-3">
-        <p className={`text-lg font-semibold ${BAND_TONE[result.band]}`}>{BAND_LABELS[result.band]}</p>
+        <p className={`animate-grade-pop text-lg font-semibold ${BAND_TONE[result.band]}`}>
+          {BAND_LABELS[result.band]}
+        </p>
         <p className="text-muted text-sm tabular-nums">{result.accuracy}%</p>
       </div>
 

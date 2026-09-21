@@ -31,7 +31,20 @@ export const attemptSchema = z.object({
   /** 0–1 similarity reported by the answer checker. */
   similarity: z.number().min(0).max(1).default(0),
 
+  /**
+   * **Active** time on this card: background and idle stretches excluded.
+   * See lib/gamification/studyTime.ts for exactly what counts.
+   */
   durationMs: z.number().int().nonnegative().default(0),
+
+  /**
+   * XP actually paid for this attempt, recorded rather than recomputed.
+   *
+   * The award depends on the grading band and on whether the card had already been
+   * passed today, and the stored verdict cannot distinguish a "great" from a "good".
+   * Writing down what happened keeps the running total exact.
+   */
+  xpAwarded: z.number().int().nonnegative().default(0),
   hintUsed: z.boolean().default(false),
   ttsUsed: z.boolean().default(false),
 

@@ -164,5 +164,6 @@ test("finishes the session and reports the XP earned", async ({ page }) => {
   }
 
   await expect(page.getByText("Session complete")).toBeVisible();
-  await expect(page.getByText(/earned 30 XP/)).toBeVisible();
+  await expect(page.getByText("3 answered")).toBeVisible();
+  await expect(page.getByText("XP earned").locator("xpath=following-sibling::p[1]")).toHaveText("30");
 });

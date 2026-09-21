@@ -247,6 +247,7 @@ describe("attempt repository", () => {
     durationMs: 4200,
     hintUsed: false,
     ttsUsed: false,
+    xpAwarded: 10,
     createdAt,
   });
 

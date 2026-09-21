@@ -9,6 +9,7 @@ import { useStudyStore, sourceKey } from "@/stores/useStudyStore";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common/States";
 import { ExerciseCard } from "@/components/learn/ExerciseCard";
 import { ModePicker } from "@/components/learn/ModePicker";
+import { SessionSummary } from "@/components/learn/SessionSummary";
 
 function ChooseLessonLink({ label = "Choose a category" }: { label?: string }) {
   return (
@@ -29,7 +30,7 @@ function LearnSession() {
   const category = isCategory(rawCategory) ? rawCategory : null;
   const mode = isImplementedMode(rawMode) ? rawMode : "dictation";
 
-  const { phase, error, cards, sessionXp, source, startLesson } = useStudyStore();
+  const { phase, error, cards, source, startLesson } = useStudyStore();
 
   // Both the category and the mode live in the URL, so a reload resumes the same
   // exercise rather than dropping back to the default.
@@ -70,20 +71,19 @@ function LearnSession() {
   }
 
   if (phase === "finished") {
-    return (
-      <>
-        {picker}
-        <EmptyState
-          title={cards.length === 0 ? "Nothing to study here yet" : "Session complete"}
-          description={
-            cards.length === 0
-              ? `${CATEGORY_INFO[category].label} has nothing due for ${MODE_INFO[mode].label} right now. Another mode may still have cards.`
-              : `You finished ${cards.length} ${cards.length === 1 ? "card" : "cards"} and earned ${sessionXp} XP. Your progress is saved on this device.`
-          }
-          action={<ChooseLessonLink label="Back to categories" />}
-        />
-      </>
-    );
+    if (cards.length === 0) {
+      return (
+        <>
+          {picker}
+          <EmptyState
+            title="Nothing to study here yet"
+            description={`${CATEGORY_INFO[category].label} has nothing due for ${MODE_INFO[mode].label} right now. Another mode may still have cards.`}
+            action={<ChooseLessonLink label="Back to categories" />}
+          />
+        </>
+      );
+    }
+    return <SessionSummary backHref="/lessons" backLabel="Back to categories" />;
   }
 
   return (

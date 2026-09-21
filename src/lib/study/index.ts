@@ -21,3 +21,6 @@ export type { EncounterAttempt, VocabLookup } from "./encounters";
 
 export { buildReviewQueue, loadReviewCounts, modeForDirection, REVIEW_LABELS } from "./review";
 export type { ReviewKind, ReviewCounts, StudyCard } from "./review";
+
+export { loadDashboard } from "./dashboard";
+export type { DashboardData, RecentCategory } from "./dashboard";

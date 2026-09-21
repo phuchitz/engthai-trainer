@@ -8,6 +8,7 @@ import { useLibrary } from "@/hooks/useLibrary";
 import { useStudyStore, sourceKey } from "@/stores/useStudyStore";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common/States";
 import { ExerciseCard } from "@/components/learn/ExerciseCard";
+import { SessionSummary } from "@/components/learn/SessionSummary";
 
 const KINDS: ReviewKind[] = ["due", "mistakes"];
 
@@ -54,7 +55,7 @@ function ReviewSession() {
   const { status, error: libraryError } = useLibrary();
   const [counts, setCounts] = useState<ReviewCounts | null>(null);
 
-  const { phase, error, cards, sessionXp, source, startReview } = useStudyStore();
+  const { phase, error, cards, source, startReview } = useStudyStore();
 
   useEffect(() => {
     if (status !== "ready" || queue !== null) return;
@@ -85,24 +86,23 @@ function ReviewSession() {
   if (phase === "idle" || phase === "loading") return <LoadingState label="Building your queue…" />;
 
   if (phase === "finished") {
-    return (
-      <EmptyState
-        title={cards.length === 0 ? "Nothing in this queue" : "Review complete"}
-        description={
-          cards.length === 0
-            ? `${REVIEW_LABELS[queue].title} is empty right now.`
-            : `You finished ${cards.length} ${cards.length === 1 ? "card" : "cards"} and earned ${sessionXp} XP.`
-        }
-        action={
-          <Link
-            href="/review"
-            className="bg-accent text-accent-foreground rounded-lg px-4 py-2 text-sm font-medium"
-          >
-            Back to review
-          </Link>
-        }
-      />
-    );
+    if (cards.length === 0) {
+      return (
+        <EmptyState
+          title="Nothing in this queue"
+          description={`${REVIEW_LABELS[queue].title} is empty right now.`}
+          action={
+            <Link
+              href="/review"
+              className="bg-accent text-accent-foreground rounded-lg px-4 py-2 text-sm font-medium"
+            >
+              Back to review
+            </Link>
+          }
+        />
+      );
+    }
+    return <SessionSummary backHref="/review" backLabel="Back to review" />;
   }
 
   return (

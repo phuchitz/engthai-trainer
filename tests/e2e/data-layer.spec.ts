@@ -18,10 +18,23 @@ test("does not duplicate seeded rows across reloads", async ({ page }) => {
   await expect(page.getByText("Sentences").locator("xpath=following-sibling::p[1]")).toHaveText("6");
 });
 
-test("derives dashboard counts from stored progress rows", async ({ page }) => {
+test("creates a progress row per item per direction", async ({ page }) => {
   await page.goto("/");
+  await expect(page.getByText("Today’s goal")).toBeVisible();
+
+  const progressRows = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open("engthai-trainer");
+      request.onsuccess = () => resolve(request.result);
+    });
+    return new Promise<number>((resolve) => {
+      const request = db.transaction("progress", "readonly").objectStore("progress").count();
+      request.onsuccess = () => resolve(request.result);
+    });
+  });
+
   // Six sentences plus twelve vocabulary entries, each tracked in both directions.
-  await expect(page.getByText("Tracked cards").locator("xpath=following-sibling::p[1]")).toHaveText("36");
+  expect(progressRows).toBe(36);
 });
 
 test("shows seeded vocabulary with its Thai reading", async ({ page }) => {

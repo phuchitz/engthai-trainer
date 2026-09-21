@@ -115,6 +115,27 @@ that edits a sentence or word must set `source` to `"user"`**, which makes it pe
 theirs. Without the refresh, an improved translation or a new vocabulary link could only
 ever reach a fresh install.
 
+## Dashboard metrics
+
+Every Dashboard figure is recomputed from the attempt log — see
+[docs/metrics.md](docs/metrics.md) for the exact definitions of accuracy, active study
+time and lesson completion.
+
+Three that are easy to get wrong:
+
+- **Active study time** excludes background stretches (nothing accrues while
+  `document.hidden`) and caps each idle stretch at 60 seconds, so the figure measures
+  activity rather than presence. It is recorded per card on `Attempt.durationMs`.
+- **The daily goal counts distinct sentences**, not cards. A sentence has a card per
+  direction, so counting cards would tick the goal twice for one sentence.
+- **Accuracy counts every graded attempt**, so retrying until right lowers it. Skips are
+  excluded entirely. Zero graded answers shows `—`, never `0%`.
+
+`Attempt.xpAwarded` is the one figure written down rather than replayed: the stored
+verdict cannot tell a `great` from a `good`, so recomputing would guess.
+
+Achievements are predicates over the stats, never stored flags.
+
 ## XP, streaks and duplicate prevention
 
 `src/lib/study/policy.ts` decides these, and every decision is **derived from the

@@ -44,6 +44,21 @@ export function SettingsScreen() {
         />
       </Row>
 
+      <Row label="Feedback sounds" hint="A short tone after each answer.">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.soundEnabled}
+          aria-label="Feedback sounds"
+          onClick={() => void update({ soundEnabled: !settings.soundEnabled })}
+          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+            settings.soundEnabled ? "bg-accent text-accent-foreground" : "border-border text-muted border"
+          }`}
+        >
+          {settings.soundEnabled ? "On" : "Off"}
+        </button>
+      </Row>
+
       <Row label="New cards per day">
         <span className="text-muted text-sm tabular-nums">{settings.newPerDay}</span>
       </Row>

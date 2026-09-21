@@ -32,6 +32,9 @@ export const settingsSchema = z.object({
   /** Speech recognition is self-assessed: it never marks an answer wrong on its own. */
   sttEnabled: z.boolean().default(false),
 
+  /** Short feedback tones after grading. Off by default: sound is an interruption. */
+  soundEnabled: z.boolean().default(false),
+
   uiLanguage: z.enum(["th", "en"]).default("en"),
 
   ai: z
