@@ -86,6 +86,35 @@ off until explicitly enabled, the consent panel states that the browser may use 
 external service, no audio is stored, and every failure path (unsupported, denied, no
 microphone, no speech, network) falls back to self-assessed manual practice.
 
+## Review, vocabulary and the word panel
+
+Two review queues, kept separate and allowed to overlap: `isDue` (the scheduler's
+promise) and `isMistake` (`incorrectCount > 0`, **independent of the schedule**, because
+the point of a mistake drill is to work on weak items now). Mistakes rank by a
+Laplace-smoothed failure rate, `incorrectCount / (practiceCount + 1)`, so one failure out
+of one does not outrank five out of nine.
+
+A review card carries its **own mode**, derived from its direction — `StudyCard` is
+`{ sentence, mode }` and a review queue mixes modes. Asking an `en2th` card as dictation
+would test the wrong skill.
+
+**The word panel never invents dictionary data.** Only hand-written entries in
+`src/content/seed/vocabulary.ts` are shown; a word with no entry gets an explicit
+"not curated" state, and a missing IPA renders nothing. Tapped words resolve through the
+entry's authored `forms` list — **no stemming**, because a wrong stem attaches the wrong
+definition to a word.
+
+Encounter counts are **derived from the attempt log** (via each sentence's curated
+`vocabIds`), never stored as a counter. Opening the panel is not an encounter.
+
+## Seeding built-in content
+
+The seed loader inserts missing rows _and refreshes existing ones while they are still
+`source: "builtin"`_. That marker means "the learner has not taken ownership". **Anything
+that edits a sentence or word must set `source` to `"user"`**, which makes it permanently
+theirs. Without the refresh, an improved translation or a new vocabulary link could only
+ever reach a fresh install.
+
 ## XP, streaks and duplicate prevention
 
 `src/lib/study/policy.ts` decides these, and every decision is **derived from the

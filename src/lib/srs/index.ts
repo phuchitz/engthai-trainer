@@ -29,7 +29,20 @@ export {
   MEMORY_THRESHOLDS,
 } from "./sm2";
 
-export { isNew, isDue, filterNew, filterDue, countNew, countDue, buildQueue } from "./queue";
+export {
+  isNew,
+  isDue,
+  filterNew,
+  filterDue,
+  countNew,
+  countDue,
+  buildQueue,
+  isMistake,
+  mistakeSeverity,
+  filterMistakes,
+  countMistakes,
+  buildMistakeQueue,
+} from "./queue";
 export type { Queue, QueueOptions } from "./queue";
 
 export { sm2Scheduler as defaultScheduler } from "./sm2";

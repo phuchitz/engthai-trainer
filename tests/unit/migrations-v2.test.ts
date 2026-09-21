@@ -45,16 +45,17 @@ afterEach(async () => {
 });
 
 describe("v2 migration", () => {
-  it("is registered as the current version", () => {
-    expect(MIGRATIONS.map((m) => m.version)).toEqual([1, 2]);
-    expect(DB_VERSION).toBe(2);
+  it("is registered in the ladder", () => {
+    expect(MIGRATIONS.map((m) => m.version)).toContain(2);
+    // The ladder stays contiguous and ends at the current version.
+    expect(MIGRATIONS.map((m) => m.version)).toEqual(Array.from({ length: DB_VERSION }, (_, i) => i + 1));
   });
 
   it("adds the category index to an existing v1 database", async () => {
     (await openAtV1()).close();
 
     const db = await getDatabase();
-    expect(db.version).toBe(2);
+    expect(db.version).toBe(DB_VERSION);
     const tx = db.transaction("sentences", "readonly");
     expect(Array.from(tx.objectStore("sentences").indexNames)).toContain("by-category");
     await tx.done;
@@ -123,7 +124,7 @@ describe("v2 migration", () => {
 
   it("runs cleanly on a fresh database with nothing to backfill", async () => {
     const db = await getDatabase();
-    expect(db.version).toBe(2);
+    expect(db.version).toBe(DB_VERSION);
     expect(await listSentencesByCategory(DEFAULT_CATEGORY)).toEqual([]);
   });
 });

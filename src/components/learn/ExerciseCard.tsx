@@ -7,6 +7,8 @@ import { MODE_INFO } from "@/lib/exercises";
 import { hasVoiceFor, isSpeechSupported, speak } from "@/lib/speech/tts";
 import { useStudyStore } from "@/stores/useStudyStore";
 import { NavIcon } from "@/components/layout/NavIcon";
+import { ClickableSentence } from "@/components/vocab/ClickableSentence";
+import { WordPanelHost } from "@/components/vocab/WordPanelHost";
 import { AnswerDiff, DiffLegend } from "./AnswerDiff";
 import { Shortcut } from "./Shortcut";
 import { WordOrderInput } from "./inputs/WordOrderInput";
@@ -34,7 +36,6 @@ export function ExerciseCard() {
   const {
     cards,
     index,
-    mode,
     phase,
     answer,
     hintUsed,
@@ -56,7 +57,10 @@ export function ExerciseCard() {
     next,
   } = store;
 
-  const sentence = cards[index];
+  const card = cards[index];
+  const sentence = card?.sentence;
+  // The mode belongs to the card, not the session: a review queue mixes them.
+  const mode = card?.mode ?? "dictation";
   const info = MODE_INFO[mode];
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -263,9 +267,10 @@ export function ExerciseCard() {
 
 /** Each mode needs a different nudge: the hint must not simply be the answer. */
 function HintPanel() {
-  const { cards, index, mode, fillBlank } = useStudyStore();
-  const sentence = cards[index];
-  if (!sentence) return null;
+  const { cards, index, fillBlank } = useStudyStore();
+  const card = cards[index];
+  if (!card) return null;
+  const { sentence, mode } = card;
 
   return (
     <div className="border-border mt-4 space-y-1 rounded-lg border border-dashed p-3">
@@ -304,9 +309,10 @@ function HintPanel() {
 }
 
 function Feedback() {
-  const { cards, index, mode, outcome, vocabulary, retry, next, selfAssess } = useStudyStore();
-  const sentence = cards[index];
-  if (!outcome || !sentence) return null;
+  const { cards, index, outcome, vocabulary, retry, next, selfAssess } = useStudyStore();
+  const card = cards[index];
+  if (!outcome || !card) return null;
+  const { sentence, mode } = card;
 
   const { result } = outcome;
   const answerText = MODE_INFO[mode].answerLanguage === "th" ? sentence.th : sentence.en;
@@ -337,13 +343,25 @@ function Feedback() {
 
       <div className="border-border space-y-2 border-t pt-4">
         <p className="text-muted text-xs tracking-wide uppercase">Answer</p>
-        <p lang={MODE_INFO[mode].answerLanguage} className="text-lg">
-          {answerText}
-        </p>
-        <p lang={MODE_INFO[mode].answerLanguage === "th" ? "en" : "th"} className="text-muted">
-          {secondary}
-        </p>
+        {MODE_INFO[mode].answerLanguage === "th" ? (
+          <>
+            <p lang="th" className="text-lg">
+              {answerText}
+            </p>
+            {/* The English side is the tappable one: word lookup is curated for English. */}
+            <ClickableSentence text={secondary} sentenceId={sentence.id} className="text-muted" />
+          </>
+        ) : (
+          <>
+            <ClickableSentence text={answerText} sentenceId={sentence.id} className="text-lg" />
+            <p lang="th" className="text-muted">
+              {secondary}
+            </p>
+          </>
+        )}
         {sentence.transliteration ? <p className="text-muted text-xs">{sentence.transliteration}</p> : null}
+        <p className="text-muted text-xs">Tap any English word to look it up.</p>
+        <WordPanelHost />
       </div>
 
       {result.band !== "perfect" && sentence.notes ? (

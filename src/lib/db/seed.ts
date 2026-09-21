@@ -17,6 +17,10 @@ export type SeedResult = {
   lessonsAdded: number;
   sentencesAdded: number;
   vocabularyAdded: number;
+  /** Built-in rows replaced with newer curated content. */
+  lessonsRefreshed: number;
+  sentencesRefreshed: number;
+  vocabularyRefreshed: number;
   progressCreated: number;
 };
 
@@ -24,8 +28,26 @@ const NOTHING: Omit<SeedResult, "applied"> = {
   lessonsAdded: 0,
   sentencesAdded: 0,
   vocabularyAdded: 0,
+  lessonsRefreshed: 0,
+  sentencesRefreshed: 0,
+  vocabularyRefreshed: 0,
   progressCreated: 0,
 };
+
+/**
+ * Whether the seed may write over what is already stored.
+ *
+ * A missing row is always written. An existing row is replaced only while it is still
+ * `builtin` — that is the marker for "the learner has not taken ownership of this".
+ * Anything the learner edits must set `source` to `user`, which makes it permanently
+ * theirs: later curated content will never overwrite it.
+ *
+ * Without this, improvements to the built-in deck — a corrected translation, new
+ * vocabulary links — could only ever reach a fresh install.
+ */
+function keepSeedWrite(existing: { source: string } | undefined): boolean {
+  return existing === undefined || existing.source === "builtin";
+}
 
 /**
  * Loads the built-in deck.
@@ -48,27 +70,50 @@ export async function seedDatabase(options: { force?: boolean; now?: number } = 
   const tx = db.transaction(["lessons", "sentences", "vocab"], "readwrite");
 
   for (const lesson of SEED_LESSONS) {
-    if (await tx.objectStore("lessons").get(lesson.id)) continue;
-    await tx
-      .objectStore("lessons")
-      .put(lessonSchema.parse({ ...lesson, source: "builtin", createdAt: now, updatedAt: now }));
-    result.lessonsAdded += 1;
+    const existing = await tx.objectStore("lessons").get(lesson.id);
+    if (!keepSeedWrite(existing)) continue;
+    await tx.objectStore("lessons").put(
+      lessonSchema.parse({
+        ...lesson,
+        source: "builtin",
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      }),
+    );
+    if (!existing) result.lessonsAdded += 1;
+    else result.lessonsRefreshed += 1;
   }
 
   for (const sentence of SEED_SENTENCES) {
-    if (await tx.objectStore("sentences").get(sentence.id)) continue;
-    await tx
-      .objectStore("sentences")
-      .put(sentenceSchema.parse({ ...sentence, source: "builtin", createdAt: now, updatedAt: now }));
-    result.sentencesAdded += 1;
+    const existing = await tx.objectStore("sentences").get(sentence.id);
+    if (!keepSeedWrite(existing)) continue;
+    await tx.objectStore("sentences").put(
+      sentenceSchema.parse({
+        ...sentence,
+        source: "builtin",
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      }),
+    );
+    if (!existing) result.sentencesAdded += 1;
+    else result.sentencesRefreshed += 1;
   }
 
   for (const entry of SEED_VOCABULARY) {
-    if (await tx.objectStore("vocab").get(entry.id)) continue;
-    await tx
-      .objectStore("vocab")
-      .put(vocabularyEntrySchema.parse({ ...entry, source: "builtin", createdAt: now, updatedAt: now }));
-    result.vocabularyAdded += 1;
+    const existing = await tx.objectStore("vocab").get(entry.id);
+    if (!keepSeedWrite(existing)) continue;
+    await tx.objectStore("vocab").put(
+      vocabularyEntrySchema.parse({
+        ...entry,
+        source: "builtin",
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        // A word the learner saved stays saved when its definition is improved.
+        saved: existing?.saved ?? entry.saved ?? false,
+      }),
+    );
+    if (!existing) result.vocabularyAdded += 1;
+    else result.vocabularyRefreshed += 1;
   }
 
   await tx.done;

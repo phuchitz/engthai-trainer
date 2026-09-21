@@ -55,6 +55,57 @@ export function countDue<T extends Pick<SchedulingState, "practiceCount" | "susp
   return filterDue(items, now).length;
 }
 
+/**
+ * A card the learner has got wrong at least once.
+ *
+ * Deliberately independent of the schedule: the point of a mistake drill is to work on
+ * weak items *now*, including ones the scheduler has parked days into the future.
+ */
+export function isMistake<T extends Pick<SchedulingState, "practiceCount" | "incorrectCount" | "suspended">>(
+  item: T,
+): boolean {
+  return !item.suspended && item.incorrectCount > 0;
+}
+
+/**
+ * How badly a card is going, as a Laplace-smoothed failure rate:
+ *
+ *   severity = incorrectCount / (practiceCount + 1)
+ *
+ * A plain failure rate would rank a card failed once out of one above a card failed five
+ * times out of nine, which is backwards — the smoothing discounts tiny samples so a card
+ * with a real history of failure sorts first.
+ */
+export function mistakeSeverity<T extends Pick<SchedulingState, "practiceCount" | "incorrectCount">>(
+  item: T,
+): number {
+  return item.incorrectCount / (item.practiceCount + 1);
+}
+
+export function filterMistakes<
+  T extends Pick<SchedulingState, "practiceCount" | "incorrectCount" | "suspended">,
+>(items: T[]): T[] {
+  return items.filter((item) => isMistake(item));
+}
+
+export function countMistakes<
+  T extends Pick<SchedulingState, "practiceCount" | "incorrectCount" | "suspended">,
+>(items: T[]): number {
+  return filterMistakes(items).length;
+}
+
+/** Worst first, with more total failures breaking a tie. */
+export function buildMistakeQueue<
+  T extends Pick<SchedulingState, "practiceCount" | "incorrectCount" | "suspended" | "lapses">,
+>(items: T[], options: { limit?: number } = {}): T[] {
+  const ranked = filterMistakes(items).sort((a, b) => {
+    const bySeverity = mistakeSeverity(b) - mistakeSeverity(a);
+    if (Math.abs(bySeverity) > 1e-9) return bySeverity;
+    return b.incorrectCount - a.incorrectCount;
+  });
+  return typeof options.limit === "number" ? ranked.slice(0, Math.max(0, options.limit)) : ranked;
+}
+
 export type QueueOptions = {
   now: number;
   /** Daily allowance for cards never practised before. */

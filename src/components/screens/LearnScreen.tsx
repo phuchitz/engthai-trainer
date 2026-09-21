@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { isCategory, CATEGORY_INFO } from "@/lib/models";
 import { isImplementedMode, MODE_INFO } from "@/lib/exercises";
-import { useStudyStore } from "@/stores/useStudyStore";
+import { useStudyStore, sourceKey } from "@/stores/useStudyStore";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common/States";
 import { ExerciseCard } from "@/components/learn/ExerciseCard";
 import { ModePicker } from "@/components/learn/ModePicker";
@@ -29,21 +29,15 @@ function LearnSession() {
   const category = isCategory(rawCategory) ? rawCategory : null;
   const mode = isImplementedMode(rawMode) ? rawMode : "dictation";
 
-  const {
-    phase,
-    error,
-    cards,
-    sessionXp,
-    category: activeCategory,
-    mode: activeMode,
-    start,
-  } = useStudyStore();
+  const { phase, error, cards, sessionXp, source, startLesson } = useStudyStore();
 
   // Both the category and the mode live in the URL, so a reload resumes the same
   // exercise rather than dropping back to the default.
   useEffect(() => {
-    if (category && (category !== activeCategory || mode !== activeMode)) void start(category, mode);
-  }, [category, mode, activeCategory, activeMode, start]);
+    if (!category) return;
+    const wanted = sourceKey({ kind: "lesson", category, mode });
+    if (!source || sourceKey(source) !== wanted) void startLesson(category, mode);
+  }, [category, mode, source, startLesson]);
 
   if (!category) {
     return (
@@ -66,7 +60,7 @@ function LearnSession() {
     );
   }
 
-  if (phase === "idle" || phase === "loading" || activeMode !== mode) {
+  if (phase === "idle" || phase === "loading") {
     return (
       <>
         {picker}

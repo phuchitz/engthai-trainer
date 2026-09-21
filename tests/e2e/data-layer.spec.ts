@@ -20,14 +20,15 @@ test("does not duplicate seeded rows across reloads", async ({ page }) => {
 
 test("derives dashboard counts from stored progress rows", async ({ page }) => {
   await page.goto("/");
-  // Six sentences plus four vocabulary entries, each tracked in both directions.
-  await expect(page.getByText("Tracked cards").locator("xpath=following-sibling::p[1]")).toHaveText("20");
+  // Six sentences plus twelve vocabulary entries, each tracked in both directions.
+  await expect(page.getByText("Tracked cards").locator("xpath=following-sibling::p[1]")).toHaveText("36");
 });
 
 test("shows seeded vocabulary with its Thai reading", async ({ page }) => {
   await page.goto("/vocabulary/");
-  await expect(page.getByText("hungry")).toBeVisible();
-  await expect(page.getByText("หิว")).toBeVisible();
+  // Exact: the curated example sentences now contain these words too.
+  await expect(page.getByText("hungry", { exact: true })).toBeVisible();
+  await expect(page.getByText("หิว", { exact: true })).toBeVisible();
 });
 
 test("persists a settings change across a reload", async ({ page }) => {

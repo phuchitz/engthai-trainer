@@ -31,6 +31,21 @@ export async function findVocabularyByEnglish(en: string): Promise<VocabularyEnt
   return db.getAllFromIndex("vocab", "by-en", en);
 }
 
+/** Toggles the learner's saved flag without touching the curated content. */
+export async function setVocabularySaved(
+  id: string,
+  saved: boolean,
+  now: number = Date.now(),
+): Promise<VocabularyEntry | undefined> {
+  const db = await getDatabase();
+  const existing = await db.get("vocab", id);
+  if (!existing) return undefined;
+
+  const next = vocabularyEntrySchema.parse({ ...existing, saved, updatedAt: now });
+  await db.put("vocab", next);
+  return next;
+}
+
 export async function deleteVocabularyEntry(id: string): Promise<void> {
   const db = await getDatabase();
   await db.delete("vocab", id);

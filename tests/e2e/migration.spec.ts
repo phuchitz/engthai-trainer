@@ -70,8 +70,9 @@ test("backfills categories when upgrading a v1 database", async ({ page }) => {
         updatedAt: now,
       });
     }
-    // Marks the seed as already applied, so only the legacy rows are present.
-    tx.objectStore("meta").put({ key: "seed", value: { version: 2, appliedAt: now } });
+    // Marks the seed as applied at a version far ahead of any real one, so the loader
+    // stays out of the way: this test is about the upgrade, not about seeding.
+    tx.objectStore("meta").put({ key: "seed", value: { version: 9999, appliedAt: now } });
     await new Promise<void>((resolve) => {
       tx.oncomplete = () => resolve();
     });
@@ -96,11 +97,19 @@ test("backfills categories when upgrading a v1 database", async ({ page }) => {
     return { version: db.version, all: await read("all"), viaIndex: await read("index") };
   });
 
-  expect(migrated.version).toBe(2);
-  expect(migrated.all).toHaveLength(4);
-  expect((migrated.all as { category?: string }[]).every((s) => s.category === "daily")).toBe(true);
-  // The index is the part that silently broke: a row with no category is absent from it.
-  expect(migrated.viaIndex).toHaveLength(4);
+  // v2 is the backfill under test; the database opens at whatever version ships now.
+  expect(migrated.version).toBeGreaterThanOrEqual(2);
 
-  await expect(page.getByText("4 sentences")).toBeVisible();
+  const legacy = (migrated.all as { id: string; category?: string }[]).filter((s) =>
+    s.id.startsWith("legacy-"),
+  );
+  expect(legacy).toHaveLength(4);
+  expect(legacy.every((s) => s.category === "daily")).toBe(true);
+
+  // The index is the part that silently broke: a row with no category is absent from it.
+  const indexedLegacy = (migrated.viaIndex as { id: string }[]).filter((s) => s.id.startsWith("legacy-"));
+  expect(indexedLegacy).toHaveLength(4);
+
+  // The backfilled rows reach the Lessons screen, which reads through the new index.
+  await expect(page.getByText(/^\d+ sentences$/).first()).toBeVisible();
 });

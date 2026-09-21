@@ -14,7 +14,7 @@ const SERVER_SNAPSHOT = () => false;
 
 function ManualFallback({ reason }: { reason: string }) {
   const { cards, index, selfAssess } = useStudyStore();
-  const sentence = cards[index];
+  const sentence = cards[index]?.sentence;
 
   return (
     <div className="border-border space-y-3 rounded-lg border border-dashed p-4">

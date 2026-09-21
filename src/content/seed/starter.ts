@@ -1,4 +1,4 @@
-import type { Lesson, Sentence, VocabularyEntry } from "@/lib/models";
+import type { Lesson, Sentence } from "@/lib/models";
 
 /**
  * Placeholder deck proving the loader works. The real corpus arrives in a later session;
@@ -7,54 +7,12 @@ import type { Lesson, Sentence, VocabularyEntry } from "@/lib/models";
  * Deliberately covers only three of the seven categories, so the empty-category path on
  * the Lessons screen is exercised by real data rather than only by a test.
  */
-export const SEED_VERSION = 2;
+export const SEED_VERSION = 3;
 
 type SeedSentence = Omit<Sentence, "createdAt" | "updatedAt" | "source">;
-type SeedVocab = Omit<VocabularyEntry, "createdAt" | "updatedAt" | "source">;
 type SeedLesson = Omit<Lesson, "createdAt" | "updatedAt" | "source">;
 
-export const SEED_VOCABULARY: SeedVocab[] = [
-  {
-    id: "seed-vocab-hungry",
-    en: "hungry",
-    th: "หิว",
-    pos: "adjective",
-    transliteration: "hiu",
-    exampleSentenceIds: ["seed-sentence-0002"],
-    tags: ["everyday"],
-    level: "A1",
-  },
-  {
-    id: "seed-vocab-tomorrow",
-    en: "tomorrow",
-    th: "พรุ่งนี้",
-    pos: "adverb",
-    transliteration: "phrung-nii",
-    exampleSentenceIds: ["seed-sentence-0003"],
-    tags: ["time"],
-    level: "A1",
-  },
-  {
-    id: "seed-vocab-deploy",
-    en: "deploy",
-    th: "ดีพลอย / นำขึ้นระบบ",
-    pos: "verb",
-    transliteration: "dii-phloi",
-    exampleSentenceIds: ["seed-sentence-0004"],
-    tags: ["software"],
-    level: "B1",
-  },
-  {
-    id: "seed-vocab-blocker",
-    en: "blocker",
-    th: "สิ่งที่ติดขัด",
-    pos: "noun",
-    transliteration: "sing thii tit khat",
-    exampleSentenceIds: ["seed-sentence-0006"],
-    tags: ["meetings"],
-    level: "B1",
-  },
-];
+export { SEED_VOCABULARY } from "./vocabulary";
 
 export const SEED_SENTENCES: SeedSentence[] = [
   {
@@ -72,7 +30,7 @@ export const SEED_SENTENCES: SeedSentence[] = [
     category: "daily",
     level: "A1",
     lessonIds: ["seed-lesson-basics"],
-    vocabIds: [],
+    vocabIds: ["seed-vocab-where", "seed-vocab-go"],
   },
   {
     id: "seed-sentence-0002",
@@ -89,7 +47,7 @@ export const SEED_SENTENCES: SeedSentence[] = [
     category: "daily",
     level: "A1",
     lessonIds: ["seed-lesson-basics"],
-    vocabIds: ["seed-vocab-hungry"],
+    vocabIds: ["seed-vocab-hungry", "seed-vocab-very"],
   },
   {
     id: "seed-sentence-0003",
@@ -106,7 +64,7 @@ export const SEED_SENTENCES: SeedSentence[] = [
     category: "daily",
     level: "A2",
     lessonIds: ["seed-lesson-basics"],
-    vocabIds: ["seed-vocab-tomorrow"],
+    vocabIds: ["seed-vocab-tomorrow", "seed-vocab-call"],
   },
   {
     id: "seed-sentence-0004",
@@ -123,7 +81,7 @@ export const SEED_SENTENCES: SeedSentence[] = [
     category: "software",
     level: "B1",
     lessonIds: [],
-    vocabIds: ["seed-vocab-deploy"],
+    vocabIds: ["seed-vocab-deploy", "seed-vocab-review"],
   },
   {
     id: "seed-sentence-0005",
@@ -140,7 +98,7 @@ export const SEED_SENTENCES: SeedSentence[] = [
     category: "software",
     level: "B1",
     lessonIds: [],
-    vocabIds: [],
+    vocabIds: ["seed-vocab-pull-request", "seed-vocab-take-a-look"],
   },
   {
     id: "seed-sentence-0006",
@@ -157,7 +115,7 @@ export const SEED_SENTENCES: SeedSentence[] = [
     category: "meetings",
     level: "A2",
     lessonIds: [],
-    vocabIds: ["seed-vocab-blocker"],
+    vocabIds: ["seed-vocab-blocker", "seed-vocab-today"],
   },
 ];
 
