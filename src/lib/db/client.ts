@@ -66,13 +66,40 @@ export async function closeDatabase(): Promise<void> {
   }
 }
 
-/** Drops the whole database. Used by tests and by a future "reset all data" action. */
-export async function deleteDatabase(): Promise<void> {
+/**
+ * Drops the whole database.
+ *
+ * A delete is blocked while any other connection is open — typically the app in a second
+ * tab. Resolving on `blocked` would be a lie: the delete is still pending, and the next
+ * `getDatabase()` would queue behind it and never settle. So a block is surfaced as a
+ * real, explainable failure instead.
+ */
+export async function deleteDatabase(timeoutMs = 5000): Promise<void> {
   await closeDatabase();
+
   await new Promise<void>((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DB_NAME);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-    request.onblocked = () => resolve();
+    let blocked = false;
+
+    const timer = setTimeout(() => {
+      reject(
+        new Error(
+          blocked
+            ? "Another tab has EngThai Trainer open and is holding the database. Close it and try again."
+            : "Deleting the database timed out.",
+        ),
+      );
+    }, timeoutMs);
+
+    const settle = (fn: () => void) => {
+      clearTimeout(timer);
+      fn();
+    };
+
+    request.onsuccess = () => settle(resolve);
+    request.onerror = () => settle(() => reject(request.error));
+    request.onblocked = () => {
+      blocked = true;
+    };
   });
 }

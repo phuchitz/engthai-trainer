@@ -115,6 +115,28 @@ that edits a sentence or word must set `source` to `"user"`**, which makes it pe
 theirs. Without the refresh, an improved translation or a new vocabulary link could only
 ever reach a fresh install.
 
+## Import, export and backup
+
+Documented in [docs/import-export.md](docs/import-export.md): field defaults, CSV and
+paste separators, duplicate rules and the backup format.
+
+The rules that matter:
+
+- **Adding lessons and replacing everything are separate flows**, on separate tabs.
+  Mixing them makes it far too easy to wipe a month of progress while meaning to add ten
+  sentences.
+- **Nothing is written until the preview is confirmed.** Every row is validated with Zod
+  and shown with its line number, its status and any warnings.
+- **Duplicates match on normalized English**, using the answer checker's own normalizer,
+  both against stored sentences and against earlier rows in the same file. Default is
+  skip; "update existing" reuses the **existing sentence id**, which is what preserves
+  the schedule and the answer log.
+- **A backup is validated in full before anything is touched**, then applied in one
+  transaction. `formatVersion` is separate from `DB_VERSION`: the file has to stay
+  readable after the schema moves on.
+- **Never report success that did not happen.** Export checks the download was accepted,
+  delete reopens and counts, and a blocked delete fails loudly rather than hanging.
+
 ## Dashboard metrics
 
 Every Dashboard figure is recomputed from the attempt log — see

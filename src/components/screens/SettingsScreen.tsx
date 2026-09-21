@@ -16,6 +16,23 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   );
 }
 
+function Switch({ label, on, onToggle }: { label: string; on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={onToggle}
+      className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+        on ? "bg-accent text-accent-foreground" : "border-border text-muted border"
+      }`}
+    >
+      {on ? "On" : "Off"}
+    </button>
+  );
+}
+
 export function SettingsScreen() {
   const { status, error, settings, update } = useSettings();
 
@@ -45,18 +62,32 @@ export function SettingsScreen() {
       </Row>
 
       <Row label="Feedback sounds" hint="A short tone after each answer.">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settings.soundEnabled}
-          aria-label="Feedback sounds"
-          onClick={() => void update({ soundEnabled: !settings.soundEnabled })}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-            settings.soundEnabled ? "bg-accent text-accent-foreground" : "border-border text-muted border"
-          }`}
-        >
-          {settings.soundEnabled ? "On" : "Off"}
-        </button>
+        <Switch
+          label="Feedback sounds"
+          on={settings.soundEnabled}
+          onToggle={() => void update({ soundEnabled: !settings.soundEnabled })}
+        />
+      </Row>
+
+      <Row label="Spoken audio" hint="Reads prompts aloud where a voice is installed.">
+        <Switch
+          label="Spoken audio"
+          on={settings.ttsEnabled}
+          onToggle={() => void update({ ttsEnabled: !settings.ttsEnabled })}
+        />
+      </Row>
+
+      <Row label="Speech rate" hint="How fast prompts are read.">
+        <input
+          type="range"
+          min={0.5}
+          max={2}
+          step={0.1}
+          value={settings.ttsRate}
+          onChange={(e) => void update({ ttsRate: Number(e.target.value) })}
+          aria-label="Speech rate"
+          className="w-32"
+        />
       </Row>
 
       <Row label="New cards per day">
@@ -71,8 +102,13 @@ export function SettingsScreen() {
         <span className="text-muted text-sm uppercase">{settings.uiLanguage}</span>
       </Row>
 
-      <Row label="AI assistance" hint="Every core feature works with this off.">
-        <span className="text-muted text-sm">{settings.ai.enabled ? "On" : "Off"}</span>
+      <Row
+        label="AI assistance"
+        hint="Optional and off. Every core feature works without it; a provider can be configured in a later release."
+      >
+        <span className="border-border text-muted rounded-lg border px-3 py-1.5 text-xs">
+          {settings.ai.enabled ? `On — ${settings.ai.provider}` : "Not configured"}
+        </span>
       </Row>
     </div>
   );
