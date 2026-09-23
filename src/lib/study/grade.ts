@@ -2,6 +2,7 @@ import { checkAnswer, type Band, type CheckResult, type Language } from "@/lib/a
 import { advanceStreak, sentencesCompletedToday, xpForAnswer } from "@/lib/gamification";
 import type { Attempt, Direction, ExerciseMode, Grade, Sentence, Verdict } from "@/lib/models";
 import { defaultScheduler, ratingFromResult, type Rating } from "@/lib/srs";
+import { modeSchedules } from "@/lib/exercises";
 import { addAttempt, listAttemptsOnLocalDay } from "@/lib/db/repositories/attempts";
 import { getProgress, newProgress, putProgress } from "@/lib/db/repositories/progress";
 import { loadSettings, saveSettings } from "@/lib/db/repositories/settings";
@@ -35,6 +36,14 @@ export type ScoringOverride = {
   expected: string;
   alternatives?: string[];
   language?: Language;
+  /**
+   * All or nothing: anything short of an accepted answer scores zero.
+   *
+   * Multiple Choice uses this. Its distractors are real sentences that differ from the
+   * answer by a word or two, so word-level similarity would report "Good, 75%" for a
+   * question the learner simply got wrong — a score that flatters and misleads at once.
+   */
+  exactOnly?: boolean;
 };
 
 export type SubmitInput = {
@@ -95,19 +104,27 @@ export async function submitAnswer(input: SubmitInput): Promise<SubmitOutcome> {
       }
     : expected;
 
-  const result = checkAnswer(input.userAnswer, target.text, {
+  const graded = checkAnswer(input.userAnswer, target.text, {
     language: target.language,
     alternatives: target.alternatives,
     ignoreCase: settings.ignoreCase,
     ignorePunctuation: settings.ignorePunctuation,
   });
 
+  // The word-level diff is kept either way: it still shows which words differ, which is
+  // the most useful thing on the screen after a wrong pick.
+  const result =
+    input.scoring?.exactOnly && !graded.correct
+      ? { ...graded, accuracy: 0, band: "tryAgain" as const }
+      : graded;
+
   const rating = ratingFromResult(result);
   const verdict = VERDICT_BY_BAND[result.band];
 
   const todaysAttempts = await listAttemptsOnLocalDay(now);
   const awardXp = shouldAwardXp(todaysAttempts, id, now);
-  const schedule = shouldSchedule(todaysAttempts, id, now);
+  // A recognition mode is logged and paid like any other, but never moves the schedule.
+  const schedule = modeSchedules(input.mode) && shouldSchedule(todaysAttempts, id, now);
 
   const earned = xpForAnswer({ band: result.band, hintUsed: input.hintUsed });
   const xpAwarded = awardXp ? earned : 0;
@@ -135,17 +152,17 @@ export async function submitAnswer(input: SubmitInput): Promise<SubmitOutcome> {
   await addAttempt(attempt);
 
   let nextReviewAt: number | null = null;
-  if (schedule) {
+  if (schedule || rating === "again") {
     const existing = (await getProgress(id)) ?? newProgress("sentence", input.sentence.id, direction, now);
-    const patch = defaultScheduler.review(existing, rating, now);
 
-    // Tracked here rather than in the scheduler: which mode an item is failed in is a
-    // teaching signal, not a scheduling one.
+    // Which mode an item is failed in is a teaching signal, not a scheduling one, so it
+    // is recorded even when the mode itself never moves the schedule.
     const mistakesByMode = { ...existing.mistakesByMode };
     if (rating === "again") mistakesByMode[input.mode] += 1;
 
-    await putProgress({ ...existing, ...patch, mistakesByMode });
-    nextReviewAt = patch.nextReviewAt;
+    const patch = schedule ? defaultScheduler.review(existing, rating, now) : null;
+    await putProgress({ ...existing, ...(patch ?? {}), mistakesByMode });
+    nextReviewAt = patch?.nextReviewAt ?? null;
   }
 
   let streak = settings.streak;

@@ -72,7 +72,10 @@ sentence are different ways of asking for the same skill. Sentence Builder is th
 mode that asks for Thai, and it asks by **tapping tiles**, which is how Thai production
 is trained here; it uses the `en2th` card and so schedules independently.
 
-Two rules that are easy to get wrong:
+Multiple Choice also uses the `th2en` card, so a mistake is recorded against the skill it
+belongs to, but `MODE_INFO.schedules` is **false** for it — see below.
+
+Four rules that are easy to get wrong:
 
 - **Sentence Builder tiles are identified by index, not by text.** A sentence with a
   repeated word yields distinct tiles; keying by text would make duplicates
@@ -80,6 +83,18 @@ Two rules that are easy to get wrong:
 - **Fill in the Blank scores only the removed words**, via `submitAnswer`'s `scoring`
   override. Grading the reassembled sentence flatters the learner, because the words
   that were never removed are always right.
+- **Multiple Choice never moves the schedule.** Recognising a sentence among four is a
+  different, easier act than producing it, so letting it advance a card scheduled for
+  production would buy an interval the learner has not earned. It is declared on the mode
+  (`schedules: false`), not special-cased in the UI, and `shouldSchedule` **ignores
+  practice-only attempts** — otherwise a round of Multiple Choice would silently consume
+  the card's one schedule move for the day and cost the learner a real review.
+- **Multiple Choice is graded all or nothing**, via `scoring.exactOnly`. Its distractors
+  are real sentences a word or two from the answer, so word-level similarity would report
+  "Good, 75%" for a question that was simply got wrong. Distractors come from the **same
+  category** where there are enough of them: one from another topic can be ruled out
+  without reading the Thai at all. They are always real sentences — the app does not
+  invent a wrong answer any more than it invents a definition.
 
 Speaking is **transcript similarity, never pronunciation assessment**. The microphone is
 off until explicitly enabled, the consent panel states that the browser may use an

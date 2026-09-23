@@ -16,6 +16,7 @@ import { Shortcut } from "./Shortcut";
 import { WordOrderInput } from "./inputs/WordOrderInput";
 import { FillBlankInput } from "./inputs/FillBlankInput";
 import { SpeakInput } from "./inputs/SpeakInput";
+import { MultipleChoiceInput } from "./inputs/MultipleChoiceInput";
 
 const SPEAKER_ICON = "M11 5 6 9H2v6h4l5 4V5Zm4.5 3a5 5 0 0 1 0 8m2.5-11a9 9 0 0 1 0 14";
 
@@ -44,6 +45,9 @@ export function ExerciseCard() {
     outcome,
     placed,
     blankAnswers,
+    multipleChoice,
+    choice,
+    setChoice,
     transcript,
     sessionXp,
     cardsToday,
@@ -84,6 +88,7 @@ export function ExerciseCard() {
   }, [sentence, promptText, info.promptLanguage, markTtsUsed]);
 
   const typesAnswer = mode === "dictation" || mode === "translate";
+  const optionCount = multipleChoice?.options.length ?? 0;
 
   useEffect(() => {
     if (phase === "prompt" && typesAnswer) inputRef.current?.focus();
@@ -101,14 +106,27 @@ export function ExerciseCard() {
       ? placed.length > 0
       : mode === "fillBlank"
         ? blankAnswers.some((v) => v.trim().length > 0)
-        : mode === "speak"
-          ? transcript !== null
-          : answer.trim().length > 0;
+        : mode === "multipleChoice"
+          ? choice !== null
+          : mode === "speak"
+            ? transcript !== null
+            : answer.trim().length > 0;
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       markActivity();
       if (event.ctrlKey || event.metaKey) return;
+
+      // Multiple Choice has no text field, so bare digits are free to use. Guarded by
+      // the mode, because in every other mode a digit is something the learner is typing.
+      if (mode === "multipleChoice" && phase === "prompt" && !event.altKey) {
+        const picked = Number(event.key) - 1;
+        if (Number.isInteger(picked) && picked >= 0 && picked < optionCount) {
+          event.preventDefault();
+          setChoice(picked);
+          return;
+        }
+      }
 
       // Alt combinations produce no characters, so they stay usable while a text field
       // has focus — which it does in most of these modes.
@@ -136,7 +154,7 @@ export function ExerciseCard() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [phase, play, showHint, skip, retry, submit, next, markActivity]);
+  }, [phase, play, showHint, skip, retry, submit, next, markActivity, mode, optionCount, setChoice]);
 
   if (!sentence) return null;
 
@@ -246,6 +264,8 @@ export function ExerciseCard() {
           <WordOrderInput />
         ) : mode === "fillBlank" ? (
           <FillBlankInput />
+        ) : mode === "multipleChoice" ? (
+          <MultipleChoiceInput />
         ) : (
           <SpeakInput />
         )}
@@ -373,6 +393,13 @@ function Feedback() {
         <p className="text-muted text-xs">Only the missing words were scored.</p>
       ) : null}
 
+      {mode === "multipleChoice" ? (
+        <p className="text-muted text-xs">
+          Scored all or nothing — the alternatives are real sentences, so being close to one is not being
+          right.
+        </p>
+      ) : null}
+
       <div>
         <AnswerDiff ops={result.ops} />
         <DiffLegend />
@@ -450,7 +477,11 @@ function Feedback() {
         </p>
         {!outcome.scheduled ? (
           <p className="text-muted mt-1 text-xs">
-            Schedule already updated for this card today, so this attempt was practice only.
+            {/* Two different reasons a card did not move, and saying the wrong one would
+                misreport what the app just did. */}
+            {MODE_INFO[mode].schedules
+              ? "Schedule already updated for this card today, so this attempt was practice only."
+              : "Practice only — the schedule moves on an answer you produce, not one you pick."}
           </p>
         ) : null}
       </div>

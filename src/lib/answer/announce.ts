@@ -47,7 +47,11 @@ export function announceResult(result: CheckResult, options: AnnounceOptions = {
       const rest = result.substituted.length - pairs.length;
       parts.push(`${pairs.join(", ")}${rest > 0 ? `, and ${rest} more` : ""}.`);
     }
-    parts.push(`Expected: ${result.matchedAnswer}.`);
+    // Most sentences already end in their own punctuation; appending another full stop
+    // makes a screen reader read "hungry dot dot".
+    parts.push(
+      `Expected: ${/[.!?]$/.test(result.matchedAnswer.trim()) ? result.matchedAnswer : `${result.matchedAnswer}.`}`,
+    );
   }
 
   if (options.xpAwarded && options.xpAwarded > 0) parts.push(`Plus ${options.xpAwarded} XP.`);

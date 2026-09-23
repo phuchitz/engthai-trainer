@@ -114,18 +114,35 @@ pre-paint script in the root layout.
 | Fill in the Blank | gapped English | the missing words | `th2en` |
 | Speaking          | audio          | spoken English    | `th2en` |
 | Sentence Builder  | English        | tapped Thai tiles | `en2th` |
+| Multiple Choice   | Thai text      | a pick from four  | `th2en` |
 
 The first four are different ways of asking for the **same skill**, so they share one
 card and one schedule. Sentence Builder is the only mode that asks for Thai, and it asks
 by tapping tiles — so it uses the other card and schedules independently.
 
-Two details that are easy to get wrong:
+**Multiple Choice is practice only.** It pays XP and is logged like any other answer, and
+a wrong pick is recorded against the card, but it is the one mode that **never advances
+the schedule**: picking the right sentence out of four is an easier act than producing
+it, and it should not buy a review interval on a card scheduled for production. Doing it
+first does not consume the card's schedule move either — the typed answer that follows
+still counts.
+
+Its wrong answers are **real sentences from your own library**, drawn from the same
+category where there are enough of them, because a distractor from another topic can be
+ruled out without reading the Thai at all. It is graded **all or nothing**: the
+alternatives sit a word or two from the answer, so partial credit would report a
+comfortable score for a question you simply got wrong.
+
+Three details that are easy to get wrong:
 
 - **Sentence Builder tiles are identified by index, not by text.** A sentence with a
   repeated word yields two distinct tiles; keying by text would make tapping one consume
   the other.
 - **Fill in the Blank scores only the removed words.** Grading the reassembled sentence
   flatters the learner, because the words that were never removed are always right.
+- **Multiple Choice never invents a wrong answer.** If your library is too small to offer
+  real alternatives, the screen says so and points you at import rather than padding the
+  question out with generated text.
 
 ---
 

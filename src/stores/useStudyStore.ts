@@ -7,6 +7,7 @@ import { loadSettings } from "@/lib/db/repositories/settings";
 import { putSession } from "@/lib/db/repositories/sessions";
 import { listAttemptsOnLocalDay } from "@/lib/db/repositories/attempts";
 import { getVocabularyEntry } from "@/lib/db/repositories/vocabulary";
+import { listSentences } from "@/lib/db/repositories/sentences";
 import {
   buildReviewQueue,
   buildStudyQueue,
@@ -21,13 +22,17 @@ import {
 } from "@/lib/study";
 import {
   createFillBlankPuzzle,
+  createMultipleChoicePuzzle,
   createWordOrderPuzzle,
+  chosenText,
+  OPTION_COUNT,
   fillIn,
   joinTokens,
   scoreBlanks,
   MODE_INFO,
   type FillBlankPuzzle,
   type ImplementedMode,
+  type MultipleChoicePuzzle,
   type Token,
   type WordOrderPuzzle,
 } from "@/lib/exercises";
@@ -91,6 +96,14 @@ type StudyState = {
   fillBlank: FillBlankPuzzle | null;
   blankAnswers: string[];
 
+  multipleChoice: MultipleChoicePuzzle | null;
+  choice: number | null;
+  /**
+   * Sentences the Multiple Choice distractors are drawn from — the learner's own
+   * library, because the app never invents a wrong answer to pad a question out.
+   */
+  choicePool: ChoiceSource[];
+
   micState: MicState;
   micFailure: RecognitionFailure | null;
   transcript: string | null;
@@ -117,6 +130,7 @@ type StudyState = {
   removeToken: (id: string) => void;
   clearPlaced: () => void;
   setBlankAnswer: (index: number, value: string) => void;
+  setChoice: (index: number) => void;
   setMicState: (state: MicState) => void;
   setMicFailure: (failure: RecognitionFailure | null) => void;
   setTranscript: (transcript: string) => void;
@@ -138,6 +152,7 @@ const BLANK = {
   timer: null as StudyTimer | null,
   placed: [] as Token[],
   blankAnswers: [] as string[],
+  choice: null as number | null,
   micState: "idle" as MicState,
   micFailure: null as RecognitionFailure | null,
   transcript: null as string | null,
@@ -149,18 +164,50 @@ async function loadVocabulary(card: StudyCard | undefined): Promise<VocabularyEn
   return entries.filter((e): e is VocabularyEntry => e !== undefined);
 }
 
+/** A sentence that could serve as a distractor, with what is needed to choose it. */
+type ChoiceSource = { id: string; en: string; category: Category };
+
+const NO_PUZZLES = { wordOrder: null, fillBlank: null, blankAnswers: [], multipleChoice: null };
+
+/**
+ * Which sentences may stand in as wrong answers for this card.
+ *
+ * Same category when the category can supply enough, because a distractor from another
+ * topic can be ruled out without reading the Thai at all — "Let's take that offline" is
+ * obviously not the answer to a question about being hungry. Only when a category is too
+ * thin does the rest of the library fill in, which is better than asking no question.
+ */
+function distractorsFor(card: StudyCard, pool: readonly ChoiceSource[]): string[] {
+  const others = pool.filter((s) => s.id !== card.sentence.id);
+  const sameTopic = others.filter((s) => s.category === card.sentence.category);
+  return (sameTopic.length >= OPTION_COUNT - 1 ? sameTopic : others).map((s) => s.en);
+}
+
 /** Builds the per-mode puzzle for a card. Deterministic, so a reload shows the same one. */
-function puzzlesFor(card: StudyCard | undefined) {
-  if (!card) return { wordOrder: null, fillBlank: null, blankAnswers: [] };
+function puzzlesFor(card: StudyCard | undefined, pool: readonly ChoiceSource[] = []) {
+  if (!card) return NO_PUZZLES;
 
   if (card.mode === "wordOrder") {
-    return { wordOrder: createWordOrderPuzzle(card.sentence.th, "th"), fillBlank: null, blankAnswers: [] };
+    return { ...NO_PUZZLES, wordOrder: createWordOrderPuzzle(card.sentence.th, "th") };
   }
   if (card.mode === "fillBlank") {
     const puzzle = createFillBlankPuzzle(card.sentence.en, "en");
-    return { wordOrder: null, fillBlank: puzzle, blankAnswers: puzzle.blanks.map(() => "") };
+    return { ...NO_PUZZLES, fillBlank: puzzle, blankAnswers: puzzle.blanks.map(() => "") };
   }
-  return { wordOrder: null, fillBlank: null, blankAnswers: [] };
+  if (card.mode === "multipleChoice") {
+    // Null when the library is too small to offer real alternatives; the screen says so.
+    return {
+      ...NO_PUZZLES,
+      multipleChoice: createMultipleChoicePuzzle(card.sentence.en, distractorsFor(card, pool)),
+    };
+  }
+  return NO_PUZZLES;
+}
+
+/** The whole library, loaded once, for Multiple Choice to draw its distractors from. */
+async function loadChoicePool(cards: StudyCard[]): Promise<ChoiceSource[]> {
+  if (!cards.some((card) => card.mode === "multipleChoice")) return [];
+  return (await listSentences()).map((s) => ({ id: s.id, en: s.en, category: s.category }));
 }
 
 async function readDailyTotals(settings: Settings, now: number) {
@@ -192,6 +239,8 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   streak: 0,
   wordOrder: null,
   fillBlank: null,
+  multipleChoice: null,
+  choicePool: [],
   ...BLANK,
 
   startLesson: async (category, mode) => {
@@ -225,6 +274,11 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       return { blankAnswers: next };
     }),
 
+  setChoice: (choice) => {
+    get().timer?.mark("activity");
+    set({ choice });
+  },
+
   setMicState: (micState) => set({ micState }),
   setMicFailure: (micFailure) => set({ micFailure, micState: micFailure ? "failed" : "idle" }),
   setTranscript: (transcript) => set({ transcript, answer: transcript }),
@@ -253,6 +307,12 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       userAnswer = received;
       scoring = { expected, language: "en" };
       recordedAnswer = fillIn(state.fillBlank, state.blankAnswers);
+    } else if (mode === "multipleChoice") {
+      if (!state.multipleChoice || state.choice === null) return;
+      userAnswer = chosenText(state.multipleChoice, state.choice);
+      // Distractors are real sentences a word or two from the answer, so partial credit
+      // would report a comfortable score for a question that was simply got wrong.
+      scoring = { expected: sentence.en, alternatives: sentence.enAlternates, exactOnly: true };
     } else if (!options.force && userAnswer.trim().length === 0) {
       return;
     }
@@ -320,7 +380,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       ...BLANK,
       phase: "prompt",
       timer: new StudyTimer(),
-      ...puzzlesFor(s.cards[s.index]),
+      ...puzzlesFor(s.cards[s.index], s.choicePool),
     })),
 
   skip: async () => {
@@ -352,7 +412,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
     const { cards, index } = get();
     const nextIndex = index + 1;
     if (nextIndex >= cards.length) {
-      set({ phase: "finished", wordOrder: null, fillBlank: null, ...BLANK });
+      set({ phase: "finished", wordOrder: null, fillBlank: null, multipleChoice: null, ...BLANK });
       await finish(set, get);
       return;
     }
@@ -363,7 +423,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       // BLANK first: it clears blankAnswers and the timer, which the two lines below
       // then replace with the values for the new card.
       ...BLANK,
-      ...puzzlesFor(cards[nextIndex]),
+      ...puzzlesFor(cards[nextIndex], get().choicePool),
       timer: new StudyTimer(),
     });
   },
@@ -397,6 +457,8 @@ async function begin(
     const cards = await buildCards(settings, now);
     const totals = await readDailyTotals(settings, now);
 
+    const choicePool = await loadChoicePool(cards);
+
     const sessionId = newId(now);
     await putSession({
       id: sessionId,
@@ -420,7 +482,8 @@ async function begin(
       vocabulary: await loadVocabulary(cards[0]),
       phase: cards.length === 0 ? "finished" : "prompt",
       timer: new StudyTimer(now),
-      ...puzzlesFor(cards[0]),
+      choicePool,
+      ...puzzlesFor(cards[0], choicePool),
       ...totals,
     });
   } catch (error) {

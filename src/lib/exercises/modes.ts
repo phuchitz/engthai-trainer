@@ -12,18 +12,30 @@ export type ModeInfo = {
   /** The language of the prompt, which is what the replay button speaks. */
   promptLanguage: Language;
   instruction: string;
+  /**
+   * Whether a graded answer in this mode may move the schedule.
+   *
+   * False for recognition modes. Picking the right sentence from four options is a
+   * different, easier act than producing it, and letting it advance a card scheduled
+   * for production would buy an interval the learner has not earned — the same reason
+   * drilling a card until it is right cannot extend one.
+   */
+  schedules: boolean;
 };
 
 /**
- * Four of the five modes train producing English, so they share the `th2en` card —
- * audio, a Thai prompt and a gapped sentence are different ways of asking for the same
- * skill, and splitting them would fragment one skill across several schedules.
+ * Four modes train producing English, so they share the `th2en` card — audio, a Thai
+ * prompt and a gapped sentence are different ways of asking for the same skill, and
+ * splitting them would fragment one skill across several schedules.
  *
  * Sentence Builder is the exception: it is the only mode that asks for Thai, and it asks
  * by tapping tokens rather than typing, which is how Thai production is trained here —
  * a typed Thai answer is graded with no tolerance at all.
+ *
+ * Multiple Choice shares the `th2en` card too, so a mistake shows up against the skill
+ * it belongs to, but it is **practice only**: see `schedules`.
  */
-export const MODE_INFO: Record<Exclude<ExerciseMode, "multipleChoice">, ModeInfo> = {
+export const MODE_INFO: Record<ExerciseMode, ModeInfo> = {
   dictation: {
     id: "dictation",
     label: "Dictation",
@@ -32,6 +44,7 @@ export const MODE_INFO: Record<Exclude<ExerciseMode, "multipleChoice">, ModeInfo
     answerLanguage: "en",
     promptLanguage: "en",
     instruction: "Type what you hear, in English",
+    schedules: true,
   },
   translate: {
     id: "translate",
@@ -41,6 +54,7 @@ export const MODE_INFO: Record<Exclude<ExerciseMode, "multipleChoice">, ModeInfo
     answerLanguage: "en",
     promptLanguage: "th",
     instruction: "Translate this sentence into English",
+    schedules: true,
   },
   fillBlank: {
     id: "fillBlank",
@@ -50,6 +64,7 @@ export const MODE_INFO: Record<Exclude<ExerciseMode, "multipleChoice">, ModeInfo
     answerLanguage: "en",
     promptLanguage: "th",
     instruction: "Fill in the missing words",
+    schedules: true,
   },
   wordOrder: {
     id: "wordOrder",
@@ -59,6 +74,7 @@ export const MODE_INFO: Record<Exclude<ExerciseMode, "multipleChoice">, ModeInfo
     answerLanguage: "th",
     promptLanguage: "en",
     instruction: "Tap the words in order to build the Thai sentence",
+    schedules: true,
   },
   speak: {
     id: "speak",
@@ -68,12 +84,28 @@ export const MODE_INFO: Record<Exclude<ExerciseMode, "multipleChoice">, ModeInfo
     answerLanguage: "en",
     promptLanguage: "en",
     instruction: "Listen, then say the sentence out loud",
+    schedules: true,
+  },
+  multipleChoice: {
+    id: "multipleChoice",
+    label: "Multiple Choice",
+    labelTh: "เลือกคำตอบ",
+    direction: "th2en",
+    answerLanguage: "en",
+    promptLanguage: "th",
+    instruction: "Choose the English sentence that matches",
+    schedules: false,
   },
 };
 
 export const IMPLEMENTED_MODES = Object.keys(MODE_INFO) as (keyof typeof MODE_INFO)[];
 
 export type ImplementedMode = (typeof IMPLEMENTED_MODES)[number];
+
+/** Whether an answer in this mode may move the card's schedule. */
+export function modeSchedules(mode: ExerciseMode): boolean {
+  return MODE_INFO[mode].schedules;
+}
 
 export function isImplementedMode(value: unknown): value is ImplementedMode {
   return typeof value === "string" && (IMPLEMENTED_MODES as string[]).includes(value);

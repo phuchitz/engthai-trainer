@@ -47,6 +47,17 @@ describe("announceResult", () => {
     expect(announceResult(check("I am hungry", "hungry"))).toContain("Expected: I am hungry.");
   });
 
+  it("does not double the full stop on a sentence that already has one", () => {
+    // A screen reader reads "..", so the sentence's own punctuation is left alone.
+    const text = announceResult(check("I am very hungry.", "wrong"));
+    expect(text).toContain("Expected: I am very hungry.");
+    expect(text).not.toContain("hungry..");
+  });
+
+  it("still ends the sentence when the answer has no punctuation of its own", () => {
+    expect(announceResult(check("I am hungry", "wrong"))).toContain("Expected: I am hungry.");
+  });
+
   it("mentions XP only when XP was actually paid", () => {
     const result = check("I am hungry", "I am hungry");
     expect(announceResult(result, { xpAwarded: 10 })).toContain("Plus 10 XP.");

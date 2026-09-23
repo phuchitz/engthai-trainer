@@ -17,7 +17,8 @@ const at = (
   verdict: PriorAttempt["verdict"],
   createdAt: number = NOW,
   progressId: string = CARD,
-): PriorAttempt => ({ progressId, verdict, createdAt });
+  mode: PriorAttempt["mode"] = "dictation",
+): PriorAttempt => ({ progressId, verdict, createdAt, mode });
 
 describe("isPass", () => {
   it("counts exact and near-miss answers as passes", () => {
@@ -141,5 +142,26 @@ describe("cardsCompletedToday", () => {
 
   it("ignores other days", () => {
     expect(cardsCompletedToday([at("correct", addLocalDays(NOW, -1))], NOW)).toBe(0);
+  });
+});
+
+describe("shouldSchedule ignores practice-only modes", () => {
+  const picked = (verdict: PriorAttempt["verdict"] = "correct") => at(verdict, NOW, CARD, "multipleChoice");
+
+  it("still moves the schedule after a Multiple Choice answer", () => {
+    // The pick never moved the schedule itself, so it must not consume the day's move
+    // and leave the typed answer that follows unable to schedule.
+    expect(shouldSchedule([picked()], CARD, NOW)).toBe(true);
+    expect(shouldSchedule([picked("incorrect")], CARD, NOW)).toBe(true);
+  });
+
+  it("is still consumed by a mode that does schedule", () => {
+    expect(shouldSchedule([picked(), at("correct")], CARD, NOW)).toBe(false);
+  });
+
+  it("does not change how XP is paid", () => {
+    // XP is per card per day whatever the mode: recognising it still earned it.
+    expect(shouldAwardXp([picked()], CARD, NOW)).toBe(false);
+    expect(shouldAwardXp([picked("incorrect")], CARD, NOW)).toBe(true);
   });
 });

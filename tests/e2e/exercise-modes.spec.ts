@@ -167,7 +167,7 @@ test.describe("Speaking", () => {
 });
 
 test("every mode offers hint, skip and replay with visible shortcuts", async ({ page }) => {
-  for (const mode of ["dictation", "translate", "fillBlank", "wordOrder", "speak"]) {
+  for (const mode of ["dictation", "translate", "fillBlank", "wordOrder", "speak", "multipleChoice"]) {
     await page.goto(`/learn/?category=daily&mode=${mode}`);
     await expect(page.getByRole("button", { name: /^Hint/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /^Skip/ })).toBeVisible();

@@ -3,7 +3,7 @@ import { SEED_LESSONS, SEED_SENTENCES, SEED_VOCABULARY } from "@/content/seed/st
 import { lessonSchema, sentenceSchema, vocabularyEntrySchema, type Category } from "@/lib/models";
 import { normalizeEnglish } from "@/lib/answer";
 import { buildVocabLookup } from "@/lib/study/encounters";
-import { createWordOrderPuzzle, createFillBlankPuzzle } from "@/lib/exercises";
+import { createWordOrderPuzzle, createFillBlankPuzzle, createMultipleChoicePuzzle } from "@/lib/exercises";
 
 /**
  * The corpus is data, and data rots quietly: a vocabulary id with a typo, a word nobody
@@ -215,6 +215,18 @@ describe("the exercise modes can build something from every sentence", () => {
     for (const s of parsed) {
       const exercise = createFillBlankPuzzle(s.en, "en");
       expect(exercise.blanks.length, `${s.id}: "${s.en}"`).toBeGreaterThan(0);
+    }
+  });
+
+  it("makes a Multiple Choice question for every sentence", () => {
+    // Distractors come from the rest of the deck, so this also proves the deck is big
+    // enough and varied enough to ask about any of its own sentences.
+    for (const s of parsed) {
+      const pool = parsed.filter((other) => other.id !== s.id).map((other) => other.en);
+      const puzzle = createMultipleChoicePuzzle(s.en, pool);
+      expect(puzzle, `${s.id}: "${s.en}"`).not.toBeNull();
+      expect(puzzle!.options).toHaveLength(4);
+      expect(puzzle!.options[puzzle!.answerIndex].text).toBe(s.en);
     }
   });
 });
