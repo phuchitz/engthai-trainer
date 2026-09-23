@@ -233,6 +233,28 @@ Both documented in [docs/pwa-and-accessibility.md](docs/pwa-and-accessibility.md
   mounted for the whole session and empty until needed — a region added at the same
   moment as its text is routinely missed.
 
+## Testing
+
+`tests/unit` is Vitest with fake-indexeddb and `TZ=Asia/Bangkok`; `tests/e2e` is
+Playwright against the static export in `out/`. **`npm run e2e` does not build** — run
+`npm run build` first or it tests a stale bundle.
+
+- **Cover a migration's upgrade body in e2e, not only in a unit test.** fake-indexeddb is
+  more permissive than a real IndexedDB, which is how the v2 cursor bug shipped.
+- **Content is verified by `tests/unit/seed-content.test.ts`**, not by care: a vocabulary
+  id with a typo, an unreachable word or notation in an English sentence fails there.
+- `getByText` matches substrings **case-insensitively**, so a heading that also appears
+  inside a description needs `{ exact: true }`.
+- **Wait for the graded panel before reading anything it produced.** Submitting persists
+  asynchronously; reading the live region straight after the click is a race that passes
+  alone and fails under parallel load.
+
+Four things no automated test here can prove, and that need a human in a real browser:
+Chrome's speech recogniser actually firing its events, the microphone permission prompt,
+a real microphone being picked up, and how accented English is transcribed. The browser
+pane in this environment also refuses to fetch service-worker scripts, so PWA checks run
+through Playwright's Chromium.
+
 ## Commands
 
 ```

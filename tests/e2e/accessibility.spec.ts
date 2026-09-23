@@ -156,6 +156,8 @@ test.describe("Answer feedback is announced", () => {
 
     await page.locator("#exercise-answer").fill("definitely not the answer");
     await page.getByRole("button", { name: /^Check/ }).click();
+    // Grading persists asynchronously; reading the region before it settles is a race.
+    await expect(page.getByRole("button", { name: /^Next/ })).toBeVisible();
 
     const text = (await live.textContent()) ?? "";
     expect(text).toMatch(/percent\./);
