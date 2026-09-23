@@ -6,6 +6,23 @@ async function answerTranslate(page: Page, text: string) {
   await expect(page.getByRole("button", { name: /^Next/ })).toBeVisible();
 }
 
+/** Workplace is the smallest stocked category, so a whole queue fits in one test. */
+const WORKPLACE_DECK = [
+  "i would like to take friday off",
+  "i am attaching the report to this email",
+  "thanks for the heads up",
+  "i will be working from home tomorrow",
+  "sorry for the slow reply i was away last week",
+];
+
+async function finishWorkplaceSession(page: Page) {
+  await page.goto("/learn/?category=workplace&mode=translate");
+  for (const text of WORKPLACE_DECK) {
+    await answerTranslate(page, text);
+    await page.getByRole("button", { name: /^Next/ }).click();
+  }
+}
+
 /** Reads the value under a stat tile's label. */
 function stat(page: Page, label: string) {
   return page.getByText(label, { exact: true }).locator("xpath=following-sibling::p[1]");
@@ -99,23 +116,19 @@ test("the daily goal counts distinct sentences, not cards", async ({ page }) => 
 
 test.describe("Session summary", () => {
   test("reports the session and what it unlocked", async ({ page }) => {
-    await page.goto("/learn/?category=meetings&mode=translate");
-    await answerTranslate(page, "I have no blockers today");
-    await page.getByRole("button", { name: /^Next/ }).click();
+    await finishWorkplaceSession(page);
 
     await expect(page.getByText("Session complete")).toBeVisible();
-    await expect(page.getByText("1 answered")).toBeVisible();
-    await expect(stat(page, "Correct")).toHaveText("1/1");
+    await expect(page.getByText("5 answered")).toBeVisible();
+    await expect(stat(page, "Correct")).toHaveText("5/5");
     await expect(stat(page, "Accuracy")).toHaveText("100%");
-    await expect(stat(page, "XP earned")).toHaveText("10");
+    await expect(stat(page, "XP earned")).toHaveText("50");
     await expect(page.getByText("Achievement unlocked")).toBeVisible();
     await expect(page.getByText("First sentence")).toBeVisible();
   });
 
   test("offers a way back and a link to the dashboard", async ({ page }) => {
-    await page.goto("/learn/?category=meetings&mode=translate");
-    await answerTranslate(page, "I have no blockers today");
-    await page.getByRole("button", { name: /^Next/ }).click();
+    await finishWorkplaceSession(page);
 
     // Scoped: the sidebar has a Dashboard link too.
     await page.locator("#main").getByRole("link", { name: "Dashboard" }).click();

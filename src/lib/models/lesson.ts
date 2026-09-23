@@ -16,3 +16,12 @@ export const lessonSchema = z.object({
 });
 
 export type Lesson = z.infer<typeof lessonSchema>;
+
+/** Shape accepted from seed files, before source and timestamps are assigned. */
+export const lessonInputSchema = lessonSchema.partial({
+  createdAt: true,
+  updatedAt: true,
+  source: true,
+});
+
+export type LessonInput = z.input<typeof lessonInputSchema>;

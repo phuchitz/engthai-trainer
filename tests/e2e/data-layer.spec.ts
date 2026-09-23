@@ -4,7 +4,9 @@ test("seeds the starter deck into IndexedDB on first visit", async ({ page }) =>
   await page.goto("/lessons/");
   await expect(page.getByText("Daily Conversation")).toBeVisible();
   await expect(page.getByText("บทสนทนาประจำวัน")).toBeVisible();
-  await expect(page.getByText("3 sentences")).toBeVisible();
+  await expect(
+    page.getByRole("listitem").filter({ hasText: "Daily Conversation" }).getByText("10 sentences"),
+  ).toBeVisible();
 });
 
 test("does not duplicate seeded rows across reloads", async ({ page }) => {
@@ -15,7 +17,7 @@ test("does not duplicate seeded rows across reloads", async ({ page }) => {
   await expect(page.getByText("Daily Conversation")).toHaveCount(1);
 
   await page.goto("/data/");
-  await expect(page.getByText("Sentences").locator("xpath=following-sibling::p[1]")).toHaveText("6");
+  await expect(page.getByText("Sentences").locator("xpath=following-sibling::p[1]")).toHaveText("50");
 });
 
 test("creates a progress row per item per direction", async ({ page }) => {
@@ -33,8 +35,8 @@ test("creates a progress row per item per direction", async ({ page }) => {
     });
   });
 
-  // Six sentences plus twelve vocabulary entries, each tracked in both directions.
-  expect(progressRows).toBe(36);
+  // Fifty sentences plus ninety-six vocabulary entries, each tracked in both directions.
+  expect(progressRows).toBe(292);
 });
 
 test("shows seeded vocabulary with its Thai reading", async ({ page }) => {

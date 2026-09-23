@@ -115,6 +115,26 @@ that edits a sentence or word must set `source` to `"user"`**, which makes it pe
 theirs. Without the refresh, an improved translation or a new vocabulary link could only
 ever reach a fresh install.
 
+The deck is fifty sentences in `src/content/seed/starter.ts` and ninety-six vocabulary
+entries in `vocabulary.ts`, across Daily (10), Software (15), Meetings (10), Interviews
+(10) and Workplace (5). **Travel and Custom are deliberately empty** — Custom is where
+imports land, and an empty Travel keeps the Lessons screen's empty-category path
+exercised by real data.
+
+Three rules the corpus has to keep, all enforced by `tests/unit/seed-content.test.ts`
+rather than by care:
+
+- **Never reuse a sentence id for different content.** A refresh replaces the row in
+  place, so the learner would keep one sentence's schedule against another's text.
+- **Every curated word must be reachable by tapping one word of its own sentence.**
+  `buildVocabLookup` keeps the _first_ entry that claims a surface form and silently
+  drops later claims, so a clash attaches the wrong definition with no error anywhere.
+  A multi-word headword therefore needs a single-word form ("heads up" via "heads"), and
+  a possessive is its own form ("team's").
+- **No symbols, digits or dashes in the English.** Every sentence is read aloud by
+  Dictation and Speaking and typed back by hand, so notation tests punctuation rather
+  than English.
+
 ## Optional AI
 
 Off by default, and **this build registers no provider at all**. `src/lib/ai` is

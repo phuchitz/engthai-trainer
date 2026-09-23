@@ -93,3 +93,91 @@ describe("seedDatabase", () => {
     expect((await seedDatabase({ now: NOW, force: true })).applied).toBe(true);
   });
 });
+
+describe("upgrading a database that already holds the previous deck", () => {
+  /** A learner mid-way through the old six-sentence deck. */
+  async function studyOneSentence(id: string) {
+    const { getProgress, putProgress } = await import("@/lib/db/repositories/progress");
+    const { progressId } = await import("@/lib/utils/id");
+    const rowId = progressId("sentence", id, "th2en");
+    const row = (await getProgress(rowId))!;
+    await putProgress({
+      ...row,
+      practiceCount: 4,
+      correctCount: 3,
+      incorrectCount: 1,
+      intervalDays: 6,
+      nextReviewAt: NOW + 6 * 86_400_000,
+      lastPracticedAt: NOW,
+    });
+    return rowId;
+  }
+
+  it("adds the new sentences and leaves the old rows' schedules untouched", async () => {
+    await seedDatabase({ now: NOW });
+    const rowId = await studyOneSentence(SEED_SENTENCES[0].id);
+
+    // Pretend the stored deck is one version behind, which is what a returning
+    // learner's database actually looks like after an update ships.
+    await setMeta(SEED_META_KEY, { version: SEED_VERSION - 1, appliedAt: NOW });
+    const result = await seedDatabase({ now: NOW + 86_400_000 });
+
+    expect(result.applied).toBe(true);
+    expect(result.sentencesAdded).toBe(0);
+    // Refreshed in place, not inserted again.
+    expect(result.sentencesRefreshed).toBe(SEED_SENTENCES.length);
+    expect(await countSentences()).toBe(SEED_SENTENCES.length);
+
+    const { getProgress } = await import("@/lib/db/repositories/progress");
+    const progress = await getProgress(rowId);
+    expect(progress?.practiceCount).toBe(4);
+    expect(progress?.intervalDays).toBe(6);
+    expect(progress?.nextReviewAt).toBe(NOW + 6 * 86_400_000);
+  });
+
+  it("keeps the original createdAt when a sentence is refreshed", async () => {
+    await seedDatabase({ now: NOW });
+    await setMeta(SEED_META_KEY, { version: SEED_VERSION - 1, appliedAt: NOW });
+    await seedDatabase({ now: NOW + 86_400_000 });
+
+    const sentence = await getSentence(SEED_SENTENCES[0].id);
+    expect(sentence?.createdAt).toBe(NOW);
+    expect(sentence?.updatedAt).toBe(NOW + 86_400_000);
+  });
+
+  it("keeps a word the learner saved when its definition improves", async () => {
+    await seedDatabase({ now: NOW });
+    const { getVocabularyEntry, putVocabularyEntry } = await import("@/lib/db/repositories/vocabulary");
+    const entry = (await getVocabularyEntry(SEED_VOCABULARY[0].id))!;
+    await putVocabularyEntry({ ...entry, saved: true });
+
+    await setMeta(SEED_META_KEY, { version: SEED_VERSION - 1, appliedAt: NOW });
+    await seedDatabase({ now: NOW + 86_400_000 });
+
+    expect((await getVocabularyEntry(SEED_VOCABULARY[0].id))?.saved).toBe(true);
+  });
+
+  it("writes no duplicate progress rows for the sentences that were already there", async () => {
+    await seedDatabase({ now: NOW });
+    const before = await countProgress();
+
+    await setMeta(SEED_META_KEY, { version: SEED_VERSION - 1, appliedAt: NOW });
+    const result = await seedDatabase({ now: NOW + 86_400_000 });
+
+    expect(result.progressCreated).toBe(0);
+    expect(await countProgress()).toBe(before);
+  });
+
+  it("never reuses a sentence id for different English", () => {
+    // Reusing an id replaces the row in place, so the learner would keep one
+    // sentence's schedule against another sentence's text.
+    const byId = new Map<string, string>();
+    for (const s of SEED_SENTENCES) {
+      expect(byId.has(s.id), `${s.id} appears twice`).toBe(false);
+      byId.set(s.id, s.en);
+    }
+    // The ids carried over from the previous deck still mean what they meant.
+    expect(byId.get("seed-sentence-0001")).toBe("Where are you going?");
+    expect(byId.get("seed-sentence-0006")).toBe("I don't have any blockers today.");
+  });
+});
