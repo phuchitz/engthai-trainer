@@ -81,6 +81,13 @@ body {
   font-family: var(--font-latin), var(--font-thai), system-ui, sans-serif;
 }
 
+/* Set before first paint when a locked profile is active, and removed by the gate once
+   React has rendered the real lock screen. Without it the app shell would be visible for
+   a frame behind a lock that had not appeared yet. */
+html[data-gate="1"] [data-app-shell] {
+  display: none;
+}
+
 /* Thai needs more leading than Latin: vowel signs stack above and below the line. */
 :lang(th) {
   line-height: 1.85;

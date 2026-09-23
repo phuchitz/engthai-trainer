@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_Thai } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
+import { ProfileGate } from "@/components/profiles/ProfileGate";
+import { GATE_INIT_SCRIPT } from "@/components/profiles/gateScript";
 import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
 import { THEME_INIT_SCRIPT } from "@/components/theme/theme";
 import "./globals.css";
@@ -39,9 +41,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: GATE_INIT_SCRIPT }} />
       </head>
       <body className="min-h-full">
-        <AppShell>{children}</AppShell>
+        <ProfileGate>
+          <AppShell>{children}</AppShell>
+        </ProfileGate>
         <ServiceWorkerRegistrar />
       </body>
     </html>

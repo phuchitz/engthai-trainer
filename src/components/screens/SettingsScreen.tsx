@@ -4,6 +4,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ErrorState, LoadingState } from "@/components/common/States";
 import { AIPanel } from "@/components/settings/AIPanel";
+import { ProfilePanel } from "@/components/settings/ProfilePanel";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -43,6 +44,8 @@ export function SettingsScreen() {
 
   return (
     <div className="space-y-6">
+      <ProfilePanel />
+
       <div className="divide-border border-border bg-surface divide-y overflow-hidden rounded-xl border">
         <Row label="Theme" hint="Stored in this browser, not in your library.">
           <ThemeToggle />

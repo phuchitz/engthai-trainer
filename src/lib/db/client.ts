@@ -1,8 +1,11 @@
 import { openDB, type IDBPDatabase } from "idb";
-import { DB_NAME, DB_VERSION, type EngThaiDB } from "./schema";
+import { DB_VERSION, type EngThaiDB } from "./schema";
 import { MIGRATIONS, migrationsToRun } from "./migrations";
+import { activeDbName } from "@/lib/profiles/registry";
 
 let dbPromise: Promise<IDBPDatabase<EngThaiDB>> | null = null;
+/** Which profile's database `dbPromise` belongs to, so a switch cannot serve the old one. */
+let openName: string | null = null;
 
 export class DatabaseUnavailableError extends Error {
   constructor(message: string) {
@@ -21,6 +24,10 @@ export function isDatabaseAvailable(): boolean {
  * Browser-only: the app is statically exported, so every page is prerendered on the
  * server where `indexedDB` does not exist. Callers must reach this from an effect or
  * an event handler, never during render.
+ *
+ * Which database is opened depends on the active profile. Profiles are separated by
+ * being different databases rather than by a column every query has to remember to
+ * filter on, so one profile cannot read another's rows even by mistake.
  */
 export function getDatabase(): Promise<IDBPDatabase<EngThaiDB>> {
   if (!isDatabaseAvailable()) {
@@ -31,7 +38,12 @@ export function getDatabase(): Promise<IDBPDatabase<EngThaiDB>> {
     );
   }
 
-  dbPromise ??= openDB<EngThaiDB>(DB_NAME, DB_VERSION, {
+  const name = activeDbName();
+  // A cached handle to the profile we just left would quietly write to the wrong person.
+  if (dbPromise && openName !== name) void closeDatabase();
+  openName = name;
+
+  dbPromise ??= openDB<EngThaiDB>(name, DB_VERSION, {
     async upgrade(db, oldVersion, newVersion, tx) {
       for (const migration of migrationsToRun(MIGRATIONS, oldVersion, newVersion ?? DB_VERSION)) {
         await migration.migrate({ db, tx });
@@ -59,6 +71,7 @@ export async function closeDatabase(): Promise<void> {
   if (!dbPromise) return;
   const pending = dbPromise;
   dbPromise = null;
+  openName = null;
   try {
     (await pending).close();
   } catch {
@@ -74,11 +87,11 @@ export async function closeDatabase(): Promise<void> {
  * `getDatabase()` would queue behind it and never settle. So a block is surfaced as a
  * real, explainable failure instead.
  */
-export async function deleteDatabase(timeoutMs = 5000): Promise<void> {
+export async function deleteDatabase(timeoutMs = 5000, name = activeDbName()): Promise<void> {
   await closeDatabase();
 
   await new Promise<void>((resolve, reject) => {
-    const request = indexedDB.deleteDatabase(DB_NAME);
+    const request = indexedDB.deleteDatabase(name);
     let blocked = false;
 
     const timer = setTimeout(() => {

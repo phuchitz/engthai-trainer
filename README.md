@@ -6,7 +6,8 @@ courtesies around them.
 
 Everything runs in the browser. There is **no backend, no account and no telemetry** —
 your sentences, your answers and your schedule never leave your device. It installs as an
-app and works offline.
+app and works offline. Several people can share a device through local profiles, each
+with their own progress.
 
 |             |                                                                                  |
 | ----------- | -------------------------------------------------------------------------------- |
@@ -344,12 +345,49 @@ actually transcribed. **Those four need a human in a real browser.**
 
 ---
 
+## Profiles, and what the passcode really does
+
+Two people can share a laptop without sharing a schedule. Settings → **Profiles** adds
+one; each gets **its own IndexedDB database**, so nothing is merged or filtered — the
+separation is the database boundary itself. The first profile keeps the database the app
+already had, so an existing learner is not migrated and notices nothing.
+
+A profile can carry a numeric **passcode**. Be clear about what that buys you:
+
+> It hides your progress from someone else using the same computer. It is **not
+> encryption**. The data stays in IndexedDB in plain text, and anyone who opens the
+> browser's developer tools — or reads an exported backup file — can see all of it
+> without ever meeting the prompt.
+
+The digits are still hashed (PBKDF2-SHA256, per-profile salt) and never written down as
+typed. Not because that makes four digits hard to recover — nothing could — but because
+people reuse PINs, and this one should not be sitting in storage ready to try somewhere
+else. Unlocking lasts for the browser tab, so closing it re-locks.
+
+Because nothing is encrypted, a **forgotten passcode can be removed** by typing the
+profile name. Refusing would lock you out of your own progress while changing nothing
+about who can read it.
+
+This is emphatically **not an account system**. There is no server, no sign-up, no
+password reset and nothing synced between devices. It is a picker on one browser.
+
+|                              |                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| **Separates**                | Progress, schedules, XP, streaks, saved words, imported lessons             |
+| **Protects against**         | Someone casually picking up your unlocked laptop                            |
+| **Does not protect against** | Developer tools, reading a backup file, anyone with the device and a minute |
+| **Does not do**              | Sync, sharing, remote access, recovery                                      |
+
+---
+
 ## Privacy
 
 - **No backend, no account, no analytics, no third-party requests.** The app is a static
   export; once loaded it talks to nothing.
 - Everything lives in your browser's IndexedDB, on your device. Clearing site data erases
   it — which is what the backup export is for.
+- Profile names and passcode hashes sit in `localStorage`; no learning data does. A
+  backup exports the **active profile** only.
 - The only data that can leave the device is what **you** send: audio the browser
   transcribes when you enable the microphone, and — if a future build registers an AI
   provider — the fields listed in Settings, after you have explicitly agreed.

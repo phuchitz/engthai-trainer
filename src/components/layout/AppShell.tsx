@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const primary = NAV_ITEMS.filter((i) => i.primary);
 
   return (
-    <div className="flex min-h-full flex-col md:flex-row">
+    <div data-app-shell className="flex min-h-full flex-col md:flex-row">
       <a
         href="#main"
         className="focus:bg-accent focus:text-accent-foreground sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-3 focus:rounded-md focus:px-4 focus:py-2"

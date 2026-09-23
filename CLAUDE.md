@@ -2,8 +2,12 @@
 
 # EngThai Trainer
 
-Local-first, single-user English–Thai sentence trainer. Static-export Next.js PWA.
-No backend, no auth, no multi-user. **Core features must work with AI disabled.**
+Local-first English–Thai sentence trainer. Static-export Next.js PWA.
+No backend and no accounts. **Core features must work with AI disabled.**
+
+Several people may share a device through **local profiles** — see below. That is a
+device convenience, not authentication: there is still nothing to sign in to and nothing
+leaves the browser.
 
 ## Layering (enforced by `no-restricted-imports` in eslint.config.mjs)
 
@@ -224,6 +228,36 @@ memory. That is what makes them survive a refresh, a resubmission or a second ta
 - The schedule moves on the first _graded_ answer of the day, pass or fail — so drilling
   a card until it is right cannot buy a longer interval.
 - A skip is logged but is never a success: no XP, no schedule move, and the card stays due.
+
+## Profiles and the passcode
+
+`src/lib/profiles` keeps a registry of who studies on this device. It is **not an account
+system** and every surface that mentions it says so.
+
+- **A profile is a database, not a column.** Each one opens its own IndexedDB database, so
+  no query has to remember to filter by owner and none of them can leak across. The
+  client resolves the name per call and drops a cached handle when the active profile
+  changes.
+- **The first profile keeps the original database name.** IndexedDB cannot rename a
+  database, so `engthai-trainer` becomes profile `default` and later profiles are
+  suffixed. Nothing is copied or migrated, and a learner who never opens the profile
+  screen notices no change at all.
+- **The registry lives in `localStorage`**, for the same reason the theme does: the active
+  profile must be known _before_ any database is opened. It holds names and passcode
+  hashes only — never learning data, which would give two places to disagree.
+- **The passcode gates the screen, not the data.** Progress stays in plain IndexedDB and
+  is readable through devtools or an exported backup without ever meeting the prompt.
+  Say so on the lock screen, in Settings and in the README; a lock that is described as
+  more than it is, is worse than none.
+- **Digits are hashed anyway** (PBKDF2-SHA256, per-profile salt) — not because that makes
+  four digits hard to recover, but because people reuse PINs and this one should not sit
+  in storage ready to try elsewhere.
+- **A forgotten passcode can be removed**, behind typing the profile name. Nothing is
+  encrypted, so refusing would cost the learner their own progress for no gain.
+- **Switching profile reloads the page.** Clearing each store by hand is a list that goes
+  stale the next time a store is added; a reload cannot miss one.
+- **Deleting a profile drops its database first**, and only records the removal once that
+  actually succeeded — otherwise rows would be left on the device that nothing can reach.
 
 ## Offline, installation and accessibility
 
