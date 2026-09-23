@@ -33,9 +33,12 @@ export const settingsSchema = z.object({
   sttEnabled: z.boolean().default(false),
 
   /** Short feedback tones after grading. Off by default: sound is an interruption. */
-  soundEnabled: z.boolean().default(false),
+  /**
+   * On by default: the tone after a correct answer is the clearest signal the app gives
+   * that something went right, and a learner who dislikes it turns it off once.
+   */
+  soundEnabled: z.boolean().default(true),
 
-  uiLanguage: z.enum(["th", "en"]).default("en"),
 
   /**
    * Optional AI, off by default.

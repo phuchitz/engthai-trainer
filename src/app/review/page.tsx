@@ -7,11 +7,7 @@ export const metadata: Metadata = { title: "Review" };
 export default function ReviewPage() {
   return (
     <>
-      <PageHeader
-        title="Review"
-        titleTh="ทบทวน"
-        description="Everything the scheduler says is due today, in one mixed queue."
-      />
+      <PageHeader titleKey="nav.review" descriptionKey="page.review.description" />
       <ReviewScreen />
     </>
   );

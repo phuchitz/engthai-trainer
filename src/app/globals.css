@@ -88,9 +88,37 @@ html[data-gate="1"] [data-app-shell] {
   display: none;
 }
 
-/* Thai needs more leading than Latin: vowel signs stack above and below the line. */
-:lang(th) {
-  line-height: 1.85;
+/* Text size scales the root, so every rem-based size moves together rather than each
+   one needing its own override. The step is deliberately gentle: two sizes apart should
+   be comfortable, not a different layout. */
+:root {
+  font-size: 16px;
+}
+html[data-text="s"] {
+  font-size: 15px;
+}
+html[data-text="l"] {
+  font-size: 18px;
+}
+html[data-text="xl"] {
+  font-size: 20px;
+}
+
+/* Thai needs more leading than Latin: vowel signs stack above and below the line, and
+   they collide at the sizes that read comfortably in English. The larger the text, the
+   less extra it needs proportionally. */
+:lang(th),
+html[lang="th"] body {
+  line-height: 2;
+}
+html[data-text="l"] :lang(th),
+html[data-text="xl"] :lang(th) {
+  line-height: 1.9;
+}
+
+/* Thai numerals and Latin share a line constantly here, so keep digits aligned. */
+html[lang="th"] {
+  font-variant-numeric: tabular-nums;
 }
 
 /* One subtle success cue: a short pop on the grade label. The reduced-motion block
@@ -113,6 +141,48 @@ html[data-gate="1"] [data-app-shell] {
   animation: grade-pop 320ms cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
+/* The happy case. A pass gets a little more than a colour: the panel lifts in and the
+   score sweeps up once. Kept to the answer card, and neutralised entirely by the
+   reduced-motion block below. */
+@keyframes celebrate-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes celebrate-sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.animate-celebrate {
+  animation: celebrate-in 420ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+.celebrate-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.celebrate-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--success) 18%, transparent), transparent);
+  animation: celebrate-sheen 700ms ease-out 120ms both;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -121,5 +191,9 @@ html[data-gate="1"] [data-app-shell] {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .celebrate-sheen::after {
+    display: none;
   }
 }

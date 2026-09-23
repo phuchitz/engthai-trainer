@@ -53,9 +53,20 @@ function blip(frequencies: number[], durationMs: number): void {
   });
 }
 
-/** A rising pair for a pass. */
+/**
+ * A rising arpeggio for a pass.
+ *
+ * Three notes rather than two, and a major triad rather than an octave leap: it lands as
+ * an arrival instead of a beep. Short enough that hearing it forty times in a session is
+ * not a punishment for studying.
+ */
 export function playSuccess(): void {
-  blip([660, 880], 180);
+  blip([659.25, 783.99, 1046.5], 260);
+}
+
+/** A brighter flourish, kept for the moments worth marking rather than every pass. */
+export function playCelebration(): void {
+  blip([659.25, 783.99, 987.77, 1318.5], 420);
 }
 
 /** A single low tone for a miss: lower and shorter, so it never feels punitive. */

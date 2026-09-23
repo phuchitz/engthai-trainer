@@ -7,8 +7,10 @@ import { MODE_INFO } from "@/lib/exercises";
 import { hasVoiceFor, isSpeechSupported, speak } from "@/lib/speech/tts";
 import { useStudyStore } from "@/stores/useStudyStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { playMiss, playSuccess } from "@/lib/audio/feedback";
+import { playCelebration, playMiss, playSuccess } from "@/lib/audio/feedback";
 import { NavIcon } from "@/components/layout/NavIcon";
+import { useT } from "@/components/display/preferences";
+import { GREAT_PRAISE, PERFECT_PRAISE, pickPhrase } from "@/lib/i18n";
 import { ClickableSentence } from "@/components/vocab/ClickableSentence";
 import { WordPanelHost } from "@/components/vocab/WordPanelHost";
 import { AnswerDiff, DiffLegend } from "./AnswerDiff";
@@ -65,6 +67,7 @@ export function ExerciseCard() {
     next,
   } = store;
 
+  const { t, language } = useT();
   const card = cards[index];
   const sentence = card?.sentence;
   // The mode belongs to the card, not the session: a review queue mixes them.
@@ -178,15 +181,11 @@ export function ExerciseCard() {
       </p>
 
       <div className="text-muted flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span>
-          Card {index + 1} of {cards.length}
-        </span>
+        <span>{t("learn.card.of", { index: index + 1, total: cards.length })}</span>
         <span className="flex items-center gap-3 tabular-nums">
-          <span>+{sessionXp} XP</span>
+          <span>{t("learn.xp", { amount: sessionXp })}</span>
           <span>🔥 {streak}</span>
-          <span>
-            Goal {cardsToday}/{dailyGoal} ({goalPercent}%)
-          </span>
+          <span>{t("learn.goal", { done: cardsToday, total: dailyGoal, percent: goalPercent })}</span>
         </span>
       </div>
 
@@ -206,7 +205,7 @@ export function ExerciseCard() {
             className="bg-accent text-accent-foreground flex w-full items-center justify-center gap-2 rounded-lg px-4 py-4 text-sm font-medium disabled:opacity-50"
           >
             <NavIcon path={SPEAKER_ICON} className="size-5" />
-            Listen
+            {t("learn.listen")}
             <Shortcut keys="Alt+P" />
           </button>
         ) : (
@@ -219,10 +218,10 @@ export function ExerciseCard() {
               onClick={play}
               disabled={replayDisabled}
               className="border-border text-muted flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs disabled:opacity-40"
-              aria-label="Replay the prompt"
+              aria-label={t("learn.replay.label")}
             >
               <NavIcon path={SPEAKER_ICON} className="size-4" />
-              Replay
+              {t("learn.replay")}
               <Shortcut keys="Alt+P" />
             </button>
           </div>
@@ -231,9 +230,11 @@ export function ExerciseCard() {
         {replayDisabled ? (
           <p className="text-muted mt-2 text-xs">
             {!speechAvailable
-              ? "This browser has no speech synthesis."
-              : `No ${info.promptLanguage === "th" ? "Thai" : "English"} voice is installed, so audio is unavailable.`}
-            {mode === "dictation" ? " The sentence is shown instead." : ""}
+              ? t("learn.noVoice.none")
+              : t("learn.noVoice.lang", {
+                  language: t(info.promptLanguage === "th" ? "language.thai" : "language.english"),
+                })}
+            {mode === "dictation" ? t("learn.noVoice.shown") : ""}
           </p>
         ) : null}
 
@@ -280,7 +281,7 @@ export function ExerciseCard() {
               disabled={submitting || !canSubmit}
               className="bg-foreground text-background rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-40"
             >
-              Check
+              {t("learn.check")}
               <Shortcut keys="Enter" />
             </button>
             <button
@@ -289,7 +290,7 @@ export function ExerciseCard() {
               disabled={hintUsed}
               className="border-border rounded-lg border px-4 py-2 text-sm disabled:opacity-40"
             >
-              Hint
+              {t("learn.hint")}
               <Shortcut keys="Alt+H" />
             </button>
             <button
@@ -298,7 +299,7 @@ export function ExerciseCard() {
               disabled={submitting}
               className="text-muted rounded-lg px-4 py-2 text-sm"
             >
-              Skip
+              {t("learn.skip")}
               <Shortcut keys="Alt+S" />
             </button>
           </div>
@@ -354,17 +355,23 @@ function HintPanel() {
 }
 
 function Feedback() {
-  const { cards, index, outcome, vocabulary, retry, next, selfAssess } = useStudyStore();
+  const { cards, index, outcome, vocabulary, retry, next, selfAssess, streak, cardsToday, dailyGoal } =
+    useStudyStore();
   const settings = useSettingsStore((s) => s.settings);
+  const { t } = useT();
   const card = cards[index];
   const passed = outcome?.verdict === "correct" || outcome?.verdict === "close";
+  // Worth a flourish rather than the usual tone: the first of the day, or the one that
+  // finishes it. Anything more often and the flourish stops meaning anything.
+  const milestone = passed && (cardsToday === 1 || (dailyGoal > 0 && cardsToday === dailyGoal));
 
   // One tone per graded answer, only when the learner has turned sound on.
   useEffect(() => {
     if (!outcome || !settings?.soundEnabled) return;
-    if (passed) playSuccess();
-    else playMiss();
-  }, [outcome, passed, settings?.soundEnabled]);
+    if (!passed) playMiss();
+    else if (milestone) playCelebration();
+    else playSuccess();
+  }, [outcome, passed, milestone, settings?.soundEnabled]);
 
   if (!outcome || !card) return null;
   const { sentence, mode } = card;
@@ -373,14 +380,38 @@ function Feedback() {
   const answerText = MODE_INFO[mode].answerLanguage === "th" ? sentence.th : sentence.en;
   const secondary = MODE_INFO[mode].answerLanguage === "th" ? sentence.en : sentence.th;
 
+  // Chosen from the card, not at random: random praise re-rolls on every re-render, and
+  // the same phrase every time reads like a stuck recording.
+  const praiseKeys = result.band === "perfect" ? PERFECT_PRAISE : GREAT_PRAISE;
+  const praise = passed && result.band !== "good" ? t(pickPhrase(praiseKeys, index + sentence.id.length)) : null;
+
   return (
-    <div className="border-border bg-surface space-y-4 rounded-xl border p-5">
+    <div
+      className={`border-border bg-surface space-y-4 rounded-xl border p-5 ${
+        passed ? "border-success/40 animate-celebrate celebrate-sheen" : ""
+      }`}
+    >
       <div className="flex items-baseline justify-between gap-3">
-        <p className={`animate-grade-pop text-lg font-semibold ${BAND_TONE[result.band]}`}>
-          {BAND_LABELS[result.band]}
-        </p>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <p className={`animate-grade-pop text-lg font-semibold ${BAND_TONE[result.band]}`}>
+            {BAND_LABELS[result.band]}
+          </p>
+          {praise ? <p className="text-success text-sm font-medium">{praise}</p> : null}
+        </div>
         <p className="text-muted text-sm tabular-nums">{result.accuracy}%</p>
       </div>
+
+      {passed ? (
+        <p className="text-muted text-xs">
+          {milestone && dailyGoal > 0 && cardsToday === dailyGoal
+            ? t("praise.goalMet")
+            : cardsToday === 1
+              ? t("praise.firstToday")
+              : streak > 1
+                ? t("praise.streak", { days: streak })
+                : ""}
+        </p>
+      ) : null}
 
       {mode === "speak" ? (
         <p className="text-muted text-xs">
@@ -406,7 +437,7 @@ function Feedback() {
       </div>
 
       <div className="border-border space-y-2 border-t pt-4">
-        <p className="text-muted text-xs tracking-wide uppercase">Answer</p>
+        <p className="text-muted text-xs tracking-wide uppercase">{t("learn.answer")}</p>
         {MODE_INFO[mode].answerLanguage === "th" ? (
           <>
             <p lang="th" className="text-lg">
@@ -424,13 +455,13 @@ function Feedback() {
           </>
         )}
         {sentence.transliteration ? <p className="text-muted text-xs">{sentence.transliteration}</p> : null}
-        <p className="text-muted text-xs">Tap any English word to look it up.</p>
+        <p className="text-muted text-xs">{t("learn.tapWord")}</p>
         <WordPanelHost />
       </div>
 
       {result.band !== "perfect" && sentence.notes ? (
         <div className="border-border border-t pt-4">
-          <p className="text-muted text-xs tracking-wide uppercase">Why</p>
+          <p className="text-muted text-xs tracking-wide uppercase">{t("learn.why")}</p>
           <p lang="th" className="mt-1 text-sm">
             {sentence.notes}
           </p>
@@ -439,7 +470,7 @@ function Feedback() {
 
       {sentence.exampleEn ? (
         <div className="border-border border-t pt-4">
-          <p className="text-muted text-xs tracking-wide uppercase">Another example</p>
+          <p className="text-muted text-xs tracking-wide uppercase">{t("learn.another")}</p>
           <p className="mt-1 text-sm">{sentence.exampleEn}</p>
           {sentence.exampleTh ? (
             <p lang="th" className="text-muted text-sm">
@@ -451,7 +482,7 @@ function Feedback() {
 
       {vocabulary.length > 0 ? (
         <div className="border-border border-t pt-4">
-          <p className="text-muted text-xs tracking-wide uppercase">Vocabulary</p>
+          <p className="text-muted text-xs tracking-wide uppercase">{t("learn.vocabulary")}</p>
           <ul className="mt-2 space-y-1">
             {vocabulary.map((entry) => (
               <li key={entry.id} className="flex justify-between gap-4 text-sm">
@@ -468,20 +499,20 @@ function Feedback() {
       <div className="border-border border-t pt-4">
         <p className="text-sm">
           {outcome.xpAwarded > 0 ? (
-            <span className="text-success font-medium">+{outcome.xpAwarded} XP</span>
+            <span className="text-success font-medium">
+              {t("learn.xp.earned", { amount: outcome.xpAwarded })}
+            </span>
           ) : outcome.xpWasNew ? (
-            <span className="text-muted">No XP — that answer was not a pass.</span>
+            <span className="text-muted">{t("learn.xp.none")}</span>
           ) : (
-            <span className="text-muted">Already earned XP for this card today.</span>
+            <span className="text-muted">{t("learn.xp.already")}</span>
           )}
         </p>
         {!outcome.scheduled ? (
           <p className="text-muted mt-1 text-xs">
             {/* Two different reasons a card did not move, and saying the wrong one would
                 misreport what the app just did. */}
-            {MODE_INFO[mode].schedules
-              ? "Schedule already updated for this card today, so this attempt was practice only."
-              : "Practice only — the schedule moves on an answer you produce, not one you pick."}
+            {t(MODE_INFO[mode].schedules ? "learn.schedule.already" : "learn.schedule.practiceOnly")}
           </p>
         ) : null}
       </div>
@@ -492,11 +523,11 @@ function Feedback() {
           onClick={() => void next()}
           className="bg-accent text-accent-foreground rounded-lg px-4 py-2 text-sm font-medium"
         >
-          Next
+          {t("learn.next")}
           <Shortcut keys="Enter" />
         </button>
         <button type="button" onClick={retry} className="border-border rounded-lg border px-4 py-2 text-sm">
-          Retry
+          {t("learn.retry")}
           <Shortcut keys="Alt+R" />
         </button>
         {mode === "speak" && result.band !== "perfect" ? (

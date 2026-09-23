@@ -7,11 +7,7 @@ export const metadata: Metadata = { title: "Vocabulary" };
 export default function VocabularyPage() {
   return (
     <>
-      <PageHeader
-        title="Vocabulary"
-        titleTh="คำศัพท์"
-        description="Search, filter and suspend individual words, each with its own schedule."
-      />
+      <PageHeader titleKey="nav.vocabulary" descriptionKey="page.vocabulary.description" />
       <VocabularyScreen />
     </>
   );

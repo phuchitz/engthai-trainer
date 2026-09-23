@@ -7,11 +7,7 @@ export const metadata: Metadata = { title: "Lessons" };
 export default function LessonsPage() {
   return (
     <>
-      <PageHeader
-        title="Lessons"
-        titleTh="บทเรียน"
-        description="Browse lesson decks by level and start a study session."
-      />
+      <PageHeader titleKey="nav.lessons" descriptionKey="page.lessons.description" />
       <LessonsScreen />
     </>
   );

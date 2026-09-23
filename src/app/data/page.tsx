@@ -7,11 +7,7 @@ export const metadata: Metadata = { title: "Import / Export" };
 export default function DataPage() {
   return (
     <>
-      <PageHeader
-        title="Import / Export"
-        titleTh="นำเข้า / ส่งออก"
-        description="Full JSON backups, CSV and Anki decks, with a dry-run preview before anything is written."
-      />
+      <PageHeader titleKey="nav.data" descriptionKey="page.data.description" />
       <DataScreen />
     </>
   );

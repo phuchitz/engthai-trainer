@@ -5,6 +5,8 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ErrorState, LoadingState } from "@/components/common/States";
 import { AIPanel } from "@/components/settings/AIPanel";
 import { ProfilePanel } from "@/components/settings/ProfilePanel";
+import { LanguageToggle, TextSizeToggle } from "@/components/display/DisplayControls";
+import { useT } from "@/components/display/preferences";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -37,6 +39,7 @@ function Switch({ label, on, onToggle }: { label: string; on: boolean; onToggle:
 
 export function SettingsScreen() {
   const { status, error, settings, update } = useSettings();
+  const { t } = useT();
 
   if (status === "idle" || status === "loading" || !settings)
     return <LoadingState label="Loading settings…" />;
@@ -47,11 +50,19 @@ export function SettingsScreen() {
       <ProfilePanel />
 
       <div className="divide-border border-border bg-surface divide-y overflow-hidden rounded-xl border">
-        <Row label="Theme" hint="Stored in this browser, not in your library.">
+        <Row label={t("settings.language")} hint={t("settings.language.hint")}>
+          <LanguageToggle />
+        </Row>
+
+        <Row label={t("settings.textSize")} hint={t("settings.textSize.hint")}>
+          <TextSizeToggle />
+        </Row>
+
+        <Row label={t("settings.theme")} hint={t("settings.theme.hint")}>
           <ThemeToggle />
         </Row>
 
-        <Row label="Daily goal" hint="Cards to finish each day.">
+        <Row label={t("settings.dailyGoal")} hint={t("settings.dailyGoal.hint")}>
           <input
             type="number"
             min={1}
@@ -66,7 +77,7 @@ export function SettingsScreen() {
           />
         </Row>
 
-        <Row label="Feedback sounds" hint="A short tone after each answer.">
+        <Row label={t("settings.sound")} hint={t("settings.sound.hint")}>
           <Switch
             label="Feedback sounds"
             on={settings.soundEnabled}
@@ -74,7 +85,7 @@ export function SettingsScreen() {
           />
         </Row>
 
-        <Row label="Spoken audio" hint="Reads prompts aloud where a voice is installed.">
+        <Row label={t("settings.tts")} hint={t("settings.tts.hint")}>
           <Switch
             label="Spoken audio"
             on={settings.ttsEnabled}
@@ -82,7 +93,7 @@ export function SettingsScreen() {
           />
         </Row>
 
-        <Row label="Speech rate" hint="How fast prompts are read.">
+        <Row label={t("settings.rate")} hint={t("settings.rate.hint")}>
           <input
             type="range"
             min={0.5}
@@ -95,17 +106,14 @@ export function SettingsScreen() {
           />
         </Row>
 
-        <Row label="New cards per day">
+        <Row label={t("settings.newPerDay")}>
           <span className="text-muted text-sm tabular-nums">{settings.newPerDay}</span>
         </Row>
 
-        <Row label="Answer strictness" hint="Applies to English only. Typed Thai is always checked strictly.">
+        <Row label={t("settings.strictness")} hint={t("settings.strictness.hint")}>
           <span className="text-muted text-sm capitalize">{settings.strictness}</span>
         </Row>
 
-        <Row label="Interface language">
-          <span className="text-muted text-sm uppercase">{settings.uiLanguage}</span>
-        </Row>
       </div>
 
       <AIPanel settings={settings} onUpdate={(patch) => void update(patch)} />

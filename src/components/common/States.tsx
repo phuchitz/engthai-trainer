@@ -1,4 +1,9 @@
-export function LoadingState({ label = "Loading…" }: { label?: string }) {
+"use client";
+
+import { useT } from "@/components/display/preferences";
+
+export function LoadingState({ label }: { label?: string }) {
+  const { t } = useT();
   return (
     <div role="status" aria-live="polite" className="border-border bg-surface rounded-xl border p-6">
       <div className="flex items-center gap-3">
@@ -6,7 +11,7 @@ export function LoadingState({ label = "Loading…" }: { label?: string }) {
           className="border-border border-t-accent size-4 animate-spin rounded-full border-2"
           aria-hidden
         />
-        <span className="text-muted text-sm">{label}</span>
+        <span className="text-muted text-sm">{label ?? t("state.loading")}</span>
       </div>
     </div>
   );
@@ -31,13 +36,12 @@ export function EmptyState({
 }
 
 export function ErrorState({ message }: { message: string }) {
+  const { t } = useT();
   return (
     <div role="alert" className="border-danger/40 bg-surface rounded-xl border p-6">
-      <p className="text-danger font-medium">Could not open your local database</p>
+      <p className="text-danger font-medium">{t("state.error.title")}</p>
       <p className="text-muted mt-2 text-sm">{message}</p>
-      <p className="text-muted mt-2 text-sm">
-        Private browsing windows and blocked site data both prevent storage. Try a normal window.
-      </p>
+      <p className="text-muted mt-2 text-sm">{t("state.error.hint")}</p>
     </div>
   );
 }
