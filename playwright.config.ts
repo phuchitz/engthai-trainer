@@ -11,6 +11,18 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     trace: "on-first-retry",
+    /**
+     * Every test starts as a learner who has already answered the front door.
+     *
+     * A build compiled with a Google client ID opens on the sign-in screen, so without
+     * this each of the two hundred tests below would be testing that screen rather than
+     * the thing it names. Tests that *are* about the front door opt out with
+     * `test.use({ storageState: { cookies: [], origins: [] } })`.
+     *
+     * Only a preference is seeded. IndexedDB is untouched, so every test still starts
+     * with an empty library and seeds it from scratch.
+     */
+    storageState: "./tests/e2e/returning-learner.json",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {

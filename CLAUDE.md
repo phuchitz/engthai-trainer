@@ -301,6 +301,13 @@ Off, unconfigured in this build, documented in [docs/google-sign-in.md](docs/goo
   accepts `javascript:` and `data:`.
 - **One Google account links to one profile.** Two would make sign-in ambiguous.
   Unlinking removes a label and touches no learning data.
+- **Configured, it becomes the landing screen**: a device nobody has signed in on opens
+  on sign-in, and on the Dashboard every load after. It is a front door, not a toll gate
+  — "continue without signing in" and choosing a local profile both count as answering
+  it, and both are remembered. An unconfigured build has no front door at all.
+- **The e2e suite seeds that answer** through `storageState`, so two hundred tests keep
+  testing the thing they name rather than the sign-in screen. The tests that _are_ about
+  the front door opt out with an empty `storageState`.
 
 ## Offline, installation and accessibility
 

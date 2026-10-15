@@ -43,7 +43,7 @@ export function AIPanel({
   const consented = settings.ai.consentGivenAt !== null;
 
   return (
-    <section className="border-border bg-surface space-y-4 rounded-xl border p-4">
+    <section aria-label="AI assistance" className="border-border bg-surface space-y-4 rounded-xl border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-medium">AI assistance</h3>

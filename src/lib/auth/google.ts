@@ -251,6 +251,33 @@ export function setGoogleConsent(agreed: boolean): void {
   }
 }
 
+const SKIP_KEY = "engthai.skipSignIn";
+
+/**
+ * Whether someone has chosen to carry on without signing in.
+ *
+ * Remembered so the sign-in screen is an invitation rather than a toll gate. Google
+ * being configured must never be able to lock someone out of an app whose data is
+ * sitting on their own device — if Google is unreachable, or they simply do not want an
+ * account, the local profiles are a complete way to use it.
+ */
+export function hasSkippedSignIn(): boolean {
+  try {
+    return localStorage.getItem(SKIP_KEY) === "yes";
+  } catch {
+    return false;
+  }
+}
+
+export function setSkippedSignIn(skipped: boolean): void {
+  try {
+    if (skipped) localStorage.setItem(SKIP_KEY, "yes");
+    else localStorage.removeItem(SKIP_KEY);
+  } catch {
+    // Not remembered; they will be offered the choice again.
+  }
+}
+
 /** Exactly what leaves the device, and what does not, written out for the disclosure. */
 export const GOOGLE_DISCLOSURE = {
   sent: [

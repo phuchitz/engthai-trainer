@@ -9,6 +9,8 @@ export {
   googleAccounts,
   forgetGoogleSession,
   hasGoogleConsent,
+  hasSkippedSignIn,
+  setSkippedSignIn,
   setGoogleConsent,
   GOOGLE_DISCLOSURE,
 } from "./google";

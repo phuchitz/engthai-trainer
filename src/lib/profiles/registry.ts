@@ -85,6 +85,11 @@ export function newProfile(name: string, now: number, id?: string): Profile {
   });
 }
 
+/** Whether any profile on this device is opened by signing in. */
+export function hasAnyGoogleLink(registry: ProfileRegistry): boolean {
+  return registry.profiles.some((p) => p.googleSub !== null);
+}
+
 /** The profile a Google account already opened on this device, if any. */
 export function findByGoogleSub(registry: ProfileRegistry, sub: string): Profile | null {
   return registry.profiles.find((p) => p.googleSub === sub) ?? null;

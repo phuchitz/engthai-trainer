@@ -286,6 +286,9 @@ test.describe("Thai interface and text size", () => {
   test("gives Thai more line spacing than Latin", async ({ page }) => {
     // Thai vowel signs stack above and below the line and collide at Latin leading.
     await page.goto("/learn/?category=daily&mode=translate");
+    // The card renders after the queue is built; measuring before that finds nothing.
+    await expect(page.locator("main p[lang='th']").first()).toBeVisible();
+
     const ratio = await page.evaluate(() => {
       const thai = document.querySelector("main p[lang='th']") as HTMLElement | null;
       if (!thai) return null;

@@ -119,6 +119,15 @@ test.describe("Two people, one device", () => {
     await page.goto("/settings/");
     await page.getByRole("button", { name: "Sign out" }).click();
 
+    // Signing out is a request to leave the signed-in-or-not decision, so on a build
+    // with sign-in configured it lands back at the front door. The picker is one step on.
+    // Wait for the gate to settle first: signing out reloads, and asking what is on
+    // screen before that lands answers about the page being left.
+    await expect(page.getByRole("heading", { name: /Who is studying\?|EngThai Trainer/ })).toBeVisible();
+
+    const chooseInstead = page.getByRole("button", { name: "Choose a profile instead" });
+    if ((await chooseInstead.count()) > 0) await chooseInstead.click();
+
     await expect(page.getByRole("heading", { name: "Who is studying?" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Nok/ })).toBeVisible();
 
@@ -225,7 +234,8 @@ test.describe("Deleting a profile", () => {
     expect(await databases(page)).toHaveLength(2);
 
     await page.goto("/settings/");
-    const profiles = page.getByRole("region").filter({ hasText: "Profiles" }).getByRole("listitem");
+    // Scoped to the profile list itself: the Google disclosure renders lists too.
+    const profiles = page.locator("section[aria-labelledby='profiles-heading'] > ul > li");
     await expect(profiles).toHaveCount(2);
 
     // Nok is the active profile, so the only Delete on screen belongs to the other one.
@@ -244,19 +254,79 @@ test.describe("Deleting a profile", () => {
   });
 });
 
+/**
+ * Whether this build was compiled with a client ID.
+ *
+ * `NEXT_PUBLIC_*` is inlined at build time, so a developer with a `.env.local` and CI
+ * without one are testing genuinely different apps. These tests assert what must hold in
+ * **either** case rather than pinning whichever the machine happens to have — a suite
+ * that passes only on an unconfigured build is a suite that stops running the moment
+ * someone configures one.
+ */
+async function googleConfigured(page: Page): Promise<boolean> {
+  await page.goto("/settings/");
+  return (await page.getByText("Google sign-in is not set up in this build").count()) === 0;
+}
+
 test.describe("Google sign-in", () => {
-  test("says it is not set up, rather than showing a button that cannot work", async ({ page }) => {
-    // No client ID is committed: the one that works is registered against your own
-    // origin, so the published build cannot have it.
-    await page.goto("/settings/");
-    await expect(page.getByText("Google sign-in is not set up in this build")).toBeVisible();
-    await expect(page.getByRole("button", { name: /Sign in with Google/i })).toHaveCount(0);
+  // These are the tests that *are* about the front door, so they meet it unanswered.
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("shows exactly one coherent state, never a button that cannot work", async ({ page }) => {
+    const configured = await googleConfigured(page);
+
+    if (configured) {
+      // Configured: the disclosure comes first, and no button before consent.
+      await expect(page.getByText("Before signing in with Google")).toBeVisible();
+      await expect(page.getByText(/not a sync service and not a lock/)).toBeVisible();
+    } else {
+      await expect(page.getByText("Google sign-in is not set up in this build")).toBeVisible();
+      await expect(page.getByText(/your own Google Cloud project/)).toBeVisible();
+    }
+
+    // Either way, nothing offers a sign-in that has not been consented to.
+    await expect(page.locator('iframe[src*="accounts.google.com"]')).toHaveCount(0);
   });
 
   test("leaves the local profile flow completely intact", async ({ page }) => {
-    await page.goto("/settings/");
+    const configured = await googleConfigured(page);
+    if (configured) {
+      // The front door stands between a fresh device and the app, so step past it.
+      await page.getByRole("button", { name: "Continue without signing in" }).click();
+      await page.goto("/settings/");
+    }
     await expect(page.getByRole("button", { name: "Add a profile" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Sign out" })).toBeEnabled();
+  });
+
+  test("a fresh device opens on sign-in when it is configured, and on the app when it is not", async ({
+    page,
+  }) => {
+    const configured = await googleConfigured(page);
+    await page.goto("/");
+
+    if (configured) {
+      // What "login on the first page" means: the app shell is not even in the DOM.
+      await expect(page.getByText(/Sign in to open your progress on this device/)).toBeVisible();
+      await expect(page.locator("[data-app-shell]")).toHaveCount(0);
+    } else {
+      await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
+    }
+  });
+
+  test("never traps anyone behind a sign-in they cannot complete", async ({ page }) => {
+    // Google could be unreachable, or the learner may simply not want an account. Their
+    // data is on their own device either way.
+    if (!(await googleConfigured(page))) test.skip();
+
+    await page.goto("/");
+    await page.getByRole("button", { name: "Continue without signing in" }).click();
+
+    await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
+
+    // And the choice sticks, rather than asking again on every load.
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
   });
 
   test("contacts Google nowhere on an ordinary load", async ({ page }) => {

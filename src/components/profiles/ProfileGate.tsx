@@ -6,6 +6,7 @@ import { MAX_PROFILES, PASSCODE_MAX_LENGTH, isValidPasscode, type Profile } from
 import { GATE_ATTRIBUTE } from "./gateScript";
 import { GoogleSignIn } from "./GoogleSignIn";
 import { isGoogleConfigured } from "@/lib/auth";
+import { hasAnyGoogleLink } from "@/lib/profiles";
 
 /**
  * Decides whether the app is shown, and to whom.
@@ -60,12 +61,48 @@ function Heading({ title, titleTh }: { title: string; titleTh: string }) {
 }
 
 function ProfilePicker() {
-  const { registry, select, create, busy, error } = useProfileStore();
+  const { registry, select, create, continueWithoutSignIn, busy, error } = useProfileStore();
   const [adding, setAdding] = useState(false);
+  const [showProfiles, setShowProfiles] = useState(false);
   const [name, setName] = useState("");
 
   if (!registry) return null;
   const full = registry.profiles.length >= MAX_PROFILES;
+
+  // The front door: sign-in is configured and nobody on this device has used it yet.
+  // Once anyone has, this screen stops leading with it and goes back to being a picker.
+  const frontDoor = isGoogleConfigured() && !hasAnyGoogleLink(registry);
+
+  if (frontDoor && !showProfiles) {
+    return (
+      <div>
+        <Heading title="EngThai Trainer" titleTh="ฝึกประโยคอังกฤษ–ไทย" />
+        <p className="text-muted mb-6 text-sm">
+          Sign in to open your progress on this device, or carry on without an account — the app works exactly
+          the same either way.
+        </p>
+
+        <GoogleSignIn />
+
+        {error ? (
+          <p role="alert" className="text-danger mt-3 text-sm">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="border-border mt-6 flex flex-wrap gap-4 border-t pt-6 text-xs">
+          <button type="button" onClick={continueWithoutSignIn} className="text-muted underline">
+            Continue without signing in
+          </button>
+          {registry.profiles.length > 1 ? (
+            <button type="button" onClick={() => setShowProfiles(true)} className="text-muted underline">
+              Choose a profile instead
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

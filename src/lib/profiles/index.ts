@@ -25,6 +25,7 @@ export {
   setPasscode,
   switchTo,
   findByGoogleSub,
+  hasAnyGoogleLink,
   linkGoogle,
   isUnlocked,
   markUnlocked,

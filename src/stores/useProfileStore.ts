@@ -2,11 +2,19 @@
 
 import { create } from "zustand";
 import { closeDatabase, deleteDatabase } from "@/lib/db/client";
-import { CLAIMS_PROBLEMS, forgetGoogleSession, readCredential } from "@/lib/auth";
+import {
+  CLAIMS_PROBLEMS,
+  forgetGoogleSession,
+  hasSkippedSignIn,
+  isGoogleConfigured,
+  readCredential,
+  setSkippedSignIn,
+} from "@/lib/auth";
 import {
   addProfile,
   activeProfile,
   findByGoogleSub,
+  hasAnyGoogleLink,
   linkGoogle,
   newProfile,
   writeRegistry as persist,
@@ -50,6 +58,7 @@ export type ProfileState = {
   unlock: (digits: string) => Promise<boolean>;
   signOut: () => void;
   signInWithGoogle: (credential: string) => Promise<void>;
+  continueWithoutSignIn: () => void;
   unlinkGoogle: (id: string) => void;
   rename: (id: string, name: string) => void;
   changePasscode: (id: string, digits: string | null) => Promise<void>;
@@ -87,9 +96,32 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   gate: () => {
     const { registry, hydrated } = get();
     if (!hydrated || !registry) return "pending";
+
+    // With sign-in configured, a device nobody has ever signed in on opens on the
+    // sign-in screen. Once anyone has, the app opens straight to the dashboard until
+    // they sign out — the point is a front door, not a toll gate on every load.
+    if (isGoogleConfigured() && !hasAnyGoogleLink(registry) && !hasSkippedSignIn()) return "picking";
+
     const profile = activeProfile(registry);
     if (!profile) return "picking";
     return isUnlocked(profile) ? "open" : "locked";
+  },
+
+  /**
+   * Carries on with local profiles instead.
+   *
+   * Always available, and remembered. Google being configured must never lock someone
+   * out of data sitting on their own device, whether because Google is unreachable or
+   * because they would simply rather not.
+   */
+  continueWithoutSignIn: () => {
+    const { registry } = get();
+    if (!registry) return;
+    setSkippedSignIn(true);
+    // Nobody is active after a sign-out, so put them back into the one profile there is.
+    const next = registry.activeId ? registry : switchTo(registry, registry.profiles[0].id, Date.now());
+    writeRegistry(next);
+    set({ registry: next });
   },
 
   current: () => {
@@ -104,6 +136,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     try {
       const next = addProfile(registry, name, Date.now());
       writeRegistry(next);
+      // Same as choosing one: making a local profile answers the front door.
+      setSkippedSignIn(true);
       await closeDatabase();
       clearUnlocked();
       restart();
@@ -119,6 +153,9 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     try {
       const next = switchTo(registry, id, Date.now());
       writeRegistry(next);
+      // Choosing a local profile *is* an answer to the front door's question. Without
+      // this the next load would ask again and bounce straight back out of the app.
+      setSkippedSignIn(true);
       await closeDatabase();
       // A passcode on the profile being entered must be met again, in every tab.
       clearUnlocked();
@@ -153,6 +190,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     if (!registry) return;
     writeRegistry(switchTo(registry, null, Date.now()));
     clearUnlocked();
+    setSkippedSignIn(false);
     // So Google does not silently re-select the same account on the next load.
     forgetGoogleSession();
     restart();

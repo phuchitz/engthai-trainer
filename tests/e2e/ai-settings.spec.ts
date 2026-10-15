@@ -66,7 +66,8 @@ test.describe("Consent disclosure", () => {
     await page.goto("/settings/");
     await page.getByRole("button", { name: /exactly what would be sent/ }).click();
 
-    await expect(page.getByText("Never sent")).toBeVisible();
+    // Scoped: the Google sign-in disclosure on this page has a "Never sent" list too.
+    await expect(page.getByRole("region", { name: "AI assistance" }).getByText("Never sent")).toBeVisible();
     await expect(page.getByText(/Your answer history/)).toBeVisible();
     await expect(page.getByText(/never used by an AI feature/)).toBeVisible();
   });

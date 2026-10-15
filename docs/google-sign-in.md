@@ -50,6 +50,22 @@ Same steps, with two things that catch people out:
   you trigger a **new deployment**. This is the usual reason the option is still missing
   after setting it.
 
+### The front door
+
+With a client ID configured, a device **nobody has signed in on yet opens on the sign-in
+screen** rather than straight into the app. Sign in, and you land on the Dashboard; the
+app then opens there directly on every later load, until you sign out.
+
+It is a front door, not a toll gate. **Continue without signing in** is always offered and
+is remembered, and so is choosing a local profile — Google being unreachable, or simply
+not wanted, must never stand between someone and data sitting on their own device.
+
+Signing out clears that choice, because signing out is a request to come back to the
+decision.
+
+A build with **no** client ID has no front door at all: a single learner opens straight
+into the app exactly as before.
+
 ### Where it appears
 
 - **Settings → Profiles**, always — showing either the sign-in button or the "not set up"
