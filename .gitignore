@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the template, which documents the one public variable this app reads and
+# holds no value. A .env.example nobody can see is not a template.
+!.env.example
 
 # vercel
 .vercel
