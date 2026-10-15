@@ -21,6 +21,26 @@ export const profileSchema = z.object({
   lastActiveAt: z.number().int().nonnegative(),
   /** Null when the profile opens straight into the app. */
   passcode: passcodeSchema.nullable().default(null),
+
+  /**
+   * Google's stable account id, when this profile was opened by signing in.
+   *
+   * A label and a lookup key, not a credential: it decides *which* local profile to
+   * open, and nothing else. See src/lib/auth/google.ts for why that is all it can be.
+   */
+  googleSub: z.string().min(1).max(255).nullable().default(null),
+  /**
+   * Google's avatar URL, shown on the picker. Absent is normal and fine.
+   *
+   * https only: this is rendered as an image source, and a valid URL is not the same as
+   * a safe one — `z.string().url()` accepts `javascript:` and `data:` without complaint.
+   */
+  avatarUrl: z
+    .string()
+    .max(2000)
+    .refine((value) => /^https:\/\//i.test(value), "avatar must be an https URL")
+    .nullable()
+    .default(null),
 });
 
 export type Profile = z.infer<typeof profileSchema>;
@@ -60,7 +80,38 @@ export function newProfile(name: string, now: number, id?: string): Profile {
     createdAt: now,
     lastActiveAt: now,
     passcode: null,
+    googleSub: null,
+    avatarUrl: null,
   });
+}
+
+/** The profile a Google account already opened on this device, if any. */
+export function findByGoogleSub(registry: ProfileRegistry, sub: string): Profile | null {
+  return registry.profiles.find((p) => p.googleSub === sub) ?? null;
+}
+
+/**
+ * Attaches a Google account to a profile, or detaches it.
+ *
+ * One account opens one profile: letting a `sub` claim two of them would make "sign in"
+ * ambiguous, and the answer would be arbitrary.
+ */
+export function linkGoogle(
+  registry: ProfileRegistry,
+  id: string,
+  link: { sub: string; avatarUrl?: string } | null,
+): ProfileRegistry {
+  if (link && registry.profiles.some((p) => p.id !== id && p.googleSub === link.sub)) {
+    throw new Error("That Google account already opens a different profile on this device.");
+  }
+  return {
+    ...registry,
+    profiles: registry.profiles.map((p) =>
+      p.id === id
+        ? { ...p, googleSub: link?.sub ?? null, avatarUrl: link?.avatarUrl ?? (link ? p.avatarUrl : null) }
+        : p,
+    ),
+  };
 }
 
 /** The registry a device gets on its very first read, owning the existing database. */

@@ -24,6 +24,8 @@ export {
   removeProfile,
   setPasscode,
   switchTo,
+  findByGoogleSub,
+  linkGoogle,
   isUnlocked,
   markUnlocked,
   clearUnlocked,

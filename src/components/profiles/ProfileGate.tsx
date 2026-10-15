@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { MAX_PROFILES, PASSCODE_MAX_LENGTH, isValidPasscode, type Profile } from "@/lib/profiles";
 import { GATE_ATTRIBUTE } from "./gateScript";
+import { GoogleSignIn } from "./GoogleSignIn";
+import { isGoogleConfigured } from "@/lib/auth";
 
 /**
  * Decides whether the app is shown, and to whom.
@@ -78,10 +80,25 @@ function ProfilePicker() {
               onClick={() => void select(profile.id)}
               className="border-border bg-surface hover:border-accent flex w-full items-center justify-between gap-3 rounded-xl border p-4 text-left disabled:opacity-50"
             >
-              <span className="min-w-0">
-                <span className="block truncate font-medium">{profile.name}</span>
-                <span className="text-muted block text-xs">
-                  {profile.passcode ? "Passcode" : "No passcode"}
+              <span className="flex min-w-0 items-center gap-3">
+                {profile.avatarUrl ? (
+                  /* A remote avatar from Google, not a bundled asset. next/image needs a
+                     configured loader and this is a static export with no optimiser. */
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profile.avatarUrl}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="size-8 shrink-0 rounded-full"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : null}
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{profile.name}</span>
+                  <span className="text-muted block text-xs">
+                    {profile.googleSub ? "Google" : profile.passcode ? "Passcode" : "No passcode"}
+                  </span>
                 </span>
               </span>
               {profile.passcode ? <LockIcon /> : null}
@@ -142,6 +159,12 @@ function ProfilePicker() {
           {full ? `This device already has ${MAX_PROFILES} profiles` : "Add someone"}
         </button>
       )}
+
+      {isGoogleConfigured() ? (
+        <div className="border-border mt-6 border-t pt-6">
+          <GoogleSignIn />
+        </div>
+      ) : null}
 
       <p className="text-muted mt-6 text-xs">
         Profiles keep separate progress on this device. They are not accounts: nothing is sent anywhere, and

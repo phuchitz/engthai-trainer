@@ -371,6 +371,18 @@ about who can read it.
 This is emphatically **not an account system**. There is no server, no sign-up, no
 password reset and nothing synced between devices. It is a picker on one browser.
 
+### Signing in with Google
+
+Optional, and **not configured in this build**. Set up, it lets you open the right local
+profile by tapping your Google account instead of picking a name — and that is all it
+does. It does not sync, does not protect anything, and does not follow you to another
+device: signing in elsewhere starts an empty profile with the same name.
+
+Nothing contacts Google until you have read the disclosure and agreed; Google's script is
+fetched on demand rather than sitting in the layout, and a test asserts that an ordinary
+load makes no external request at all. Full detail, including how to create the client ID
+and why it is not a secret, is in [docs/google-sign-in.md](docs/google-sign-in.md).
+
 |                              |                                                                             |
 | ---------------------------- | --------------------------------------------------------------------------- |
 | **Separates**                | Progress, schedules, XP, streaks, saved words, imported lessons             |
@@ -382,8 +394,9 @@ password reset and nothing synced between devices. It is a picker on one browser
 
 ## Privacy
 
-- **No backend, no account, no analytics, no third-party requests.** The app is a static
-  export; once loaded it talks to nothing.
+- **No backend, no account and no analytics.** The app is a static export; once loaded it
+  talks to nothing — unless you turn on Google sign-in, which is off by default, asks
+  first, and is the only thing in the app that can make an outbound request.
 - Everything lives in your browser's IndexedDB, on your device. Clearing site data erases
   it — which is what the backup export is for.
 - Profile names and passcode hashes sit in `localStorage`; no learning data does. A
@@ -430,12 +443,13 @@ hand-written only**, because a generated pronunciation would quietly break that 
 
 ## Further reading
 
-| Document                                                       | Covers                                                     |
-| -------------------------------------------------------------- | ---------------------------------------------------------- |
-| [docs/answer-checking.md](docs/answer-checking.md)             | Normalization, edit distance, accuracy, bands              |
-| [docs/spaced-repetition.md](docs/spaced-repetition.md)         | The scheduler in full                                      |
-| [docs/metrics.md](docs/metrics.md)                             | How every dashboard figure is computed                     |
-| [docs/import-export.md](docs/import-export.md)                 | Field defaults, separators, duplicate rules, backup format |
-| [docs/pwa-and-accessibility.md](docs/pwa-and-accessibility.md) | Offline shell, contrast, focus, announcements              |
-| [docs/ai.md](docs/ai.md)                                       | The provider interface, consent and validation             |
-| [CLAUDE.md](CLAUDE.md)                                         | The rules that constrain changes to this codebase          |
+| Document                                                       | Covers                                                          |
+| -------------------------------------------------------------- | --------------------------------------------------------------- |
+| [docs/answer-checking.md](docs/answer-checking.md)             | Normalization, edit distance, accuracy, bands                   |
+| [docs/spaced-repetition.md](docs/spaced-repetition.md)         | The scheduler in full                                           |
+| [docs/metrics.md](docs/metrics.md)                             | How every dashboard figure is computed                          |
+| [docs/import-export.md](docs/import-export.md)                 | Field defaults, separators, duplicate rules, backup format      |
+| [docs/pwa-and-accessibility.md](docs/pwa-and-accessibility.md) | Offline shell, contrast, focus, announcements                   |
+| [docs/ai.md](docs/ai.md)                                       | The provider interface, consent and validation                  |
+| [docs/google-sign-in.md](docs/google-sign-in.md)               | What signing in does, what it does not, and how to configure it |
+| [CLAUDE.md](CLAUDE.md)                                         | The rules that constrain changes to this codebase               |

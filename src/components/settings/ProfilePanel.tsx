@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { PasscodeTruth } from "@/components/profiles/ProfileGate";
+import { GoogleSignIn } from "@/components/profiles/GoogleSignIn";
+import { isGoogleConfigured } from "@/lib/auth";
 import {
   clearUnlocked,
   isPasscodeSupported,
@@ -119,7 +121,10 @@ function ProfileRow({
               {isActive ? <span className="text-muted ml-2 text-xs font-normal">Studying now</span> : null}
             </p>
           )}
-          <p className="text-muted text-xs">{profile.passcode ? "Passcode set" : "No passcode"}</p>
+          <p className="text-muted text-xs">
+            {profile.googleSub ? "Opened with Google · " : ""}
+            {profile.passcode ? "Passcode set" : "No passcode"}
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -153,6 +158,7 @@ function ProfileRow({
       </div>
 
       {isActive ? <PasscodeControls profile={profile} /> : null}
+      {isActive ? <GoogleLink profile={profile} /> : null}
 
       {confirming ? (
         <div className="border-danger/40 space-y-2 rounded-lg border p-3">
@@ -187,6 +193,45 @@ function ProfileRow({
         </div>
       ) : null}
     </li>
+  );
+}
+
+/**
+ * Linking the active profile to a Google account, or cutting it loose.
+ *
+ * Unlinking is deliberately harmless: it detaches a label, and leaves every sentence,
+ * answer and schedule exactly where they were. Nothing here was ever holding the data.
+ */
+function GoogleLink({ profile }: { profile: Profile }) {
+  const { unlinkGoogle } = useProfileStore();
+
+  // Shown even when unconfigured, the way the AI panel reports a provider it does not
+  // have. A feature that silently is not there is indistinguishable from one that is
+  // broken, and someone who wants it deserves to know what it would take.
+  if (!isGoogleConfigured()) return <GoogleSignIn />;
+
+  if (profile.googleSub) {
+    return (
+      <div className="border-border flex flex-wrap items-center gap-3 rounded-lg border border-dashed p-3">
+        <p className="text-muted grow text-xs">
+          This profile opens when you sign in with Google. That chooses the profile and nothing else — your
+          progress is stored here, not with Google.
+        </p>
+        <button
+          type="button"
+          onClick={() => unlinkGoogle(profile.id)}
+          className="border-border rounded-lg border px-3 py-1.5 text-xs"
+        >
+          Unlink Google
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-border rounded-lg border border-dashed p-3">
+      <GoogleSignIn />
+    </div>
   );
 }
 

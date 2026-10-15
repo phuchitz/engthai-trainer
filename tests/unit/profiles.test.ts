@@ -281,7 +281,9 @@ describe("what the registry is allowed to contain", () => {
     const raw = JSON.parse(localStorage.getItem(REGISTRY_STORAGE_KEY)!) as ProfileRegistry;
 
     expect(Object.keys(raw.profiles[0]).sort()).toEqual([
+      "avatarUrl",
       "createdAt",
+      "googleSub",
       "id",
       "lastActiveAt",
       "name",

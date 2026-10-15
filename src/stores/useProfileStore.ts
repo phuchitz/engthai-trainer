@@ -2,15 +2,22 @@
 
 import { create } from "zustand";
 import { closeDatabase, deleteDatabase } from "@/lib/db/client";
+import { CLAIMS_PROBLEMS, forgetGoogleSession, readCredential } from "@/lib/auth";
 import {
   addProfile,
   activeProfile,
+  findByGoogleSub,
+  linkGoogle,
+  newProfile,
+  writeRegistry as persist,
   clearUnlocked,
   dbNameFor,
   findProfile,
   hashPasscode,
+  isNameTaken,
   isUnlocked,
   markUnlocked,
+  MAX_PROFILES,
   readRegistry,
   removeProfile,
   renameProfile,
@@ -42,6 +49,8 @@ export type ProfileState = {
   select: (id: string) => Promise<void>;
   unlock: (digits: string) => Promise<boolean>;
   signOut: () => void;
+  signInWithGoogle: (credential: string) => Promise<void>;
+  unlinkGoogle: (id: string) => void;
   rename: (id: string, name: string) => void;
   changePasscode: (id: string, digits: string | null) => Promise<void>;
   forgetPasscode: (id: string) => void;
@@ -144,7 +153,80 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     if (!registry) return;
     writeRegistry(switchTo(registry, null, Date.now()));
     clearUnlocked();
+    // So Google does not silently re-select the same account on the next load.
+    forgetGoogleSession();
     restart();
+  },
+
+  /**
+   * Opens the profile a Google account belongs to, creating it the first time.
+   *
+   * The token decides **which** local profile to open and nothing else. It is verified
+   * because reading a name out of an unverified JWT is a bad habit, not because that
+   * verification protects anything — there is no server here for it to protect.
+   */
+  signInWithGoogle: async (credential) => {
+    const { registry } = get();
+    if (!registry) return;
+    set({ busy: true, error: null });
+
+    const result = await readCredential(credential);
+    if (!result.ok) {
+      set({ busy: false, error: CLAIMS_PROBLEMS[result.problem] });
+      return;
+    }
+
+    const { sub, name, picture } = result.identity;
+    const now = Date.now();
+
+    try {
+      const existing = findByGoogleSub(registry, sub);
+      if (existing) {
+        // Keep the picture current, then open the profile this account already owns.
+        const refreshed = linkGoogle(registry, existing.id, { sub, avatarUrl: picture });
+        persist(switchTo(refreshed, existing.id, now));
+        await closeDatabase();
+        clearUnlocked();
+        restart();
+        return;
+      }
+
+      if (registry.profiles.length >= MAX_PROFILES) {
+        throw new Error(`This device already has ${MAX_PROFILES} profiles. Remove one first.`);
+      }
+
+      // A name Google supplied may collide with a profile already here, and the clash
+      // is not the learner's fault, so disambiguate rather than refuse the sign-in.
+      let unique = name;
+      for (let n = 2; isNameTaken(registry, unique); n++) unique = `${name} ${n}`;
+
+      const profile = { ...newProfile(unique, now), googleSub: sub, avatarUrl: picture ?? null };
+      const next = {
+        ...registry,
+        profiles: [...registry.profiles, profile],
+        activeId: profile.id,
+      };
+      persist(next);
+      await closeDatabase();
+      clearUnlocked();
+      restart();
+    } catch (error) {
+      set({ busy: false, error: message(error) });
+    }
+  },
+
+  /** Detaches the Google account. The profile and everything in it stay exactly as they are. */
+  unlinkGoogle: (id) => {
+    const { registry } = get();
+    if (!registry) return;
+    try {
+      const next = linkGoogle(registry, id, null);
+      writeRegistry(next);
+      forgetGoogleSession();
+      set({ registry: next, error: null });
+    } catch (error) {
+      set({ error: message(error) });
+    }
   },
 
   rename: (id, name) => {

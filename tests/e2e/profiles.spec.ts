@@ -243,3 +243,43 @@ test.describe("Deleting a profile", () => {
     await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);
   });
 });
+
+test.describe("Google sign-in", () => {
+  test("says it is not set up, rather than showing a button that cannot work", async ({ page }) => {
+    // No client ID is committed: the one that works is registered against your own
+    // origin, so the published build cannot have it.
+    await page.goto("/settings/");
+    await expect(page.getByText("Google sign-in is not set up in this build")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Sign in with Google/i })).toHaveCount(0);
+  });
+
+  test("leaves the local profile flow completely intact", async ({ page }) => {
+    await page.goto("/settings/");
+    await expect(page.getByRole("button", { name: "Add a profile" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Sign out" })).toBeEnabled();
+  });
+
+  test("contacts Google nowhere on an ordinary load", async ({ page }) => {
+    // The app is offline-first and the script is not in the layout. Nothing may reach
+    // accounts.google.com until someone has read the disclosure and agreed.
+    const external: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (!url.hostname.startsWith("127.0.0.1") && url.hostname !== "localhost") external.push(url.href);
+    });
+
+    await page.goto("/");
+    await page.goto("/settings/");
+    await page.goto("/learn/?category=daily&mode=translate");
+
+    expect(external).toEqual([]);
+  });
+
+  test("stores nothing resembling a Google session", async ({ page }) => {
+    await page.goto("/settings/");
+    const stored = await page.evaluate(() => JSON.stringify(localStorage));
+
+    expect(stored).not.toMatch(/googleConsent/);
+    expect(stored).not.toMatch(/credential|id_token|access_token/i);
+  });
+});

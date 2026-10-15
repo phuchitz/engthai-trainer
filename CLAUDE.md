@@ -279,6 +279,29 @@ system** and every surface that mentions it says so.
 - **Deleting a profile drops its database first**, and only records the removal once that
   actually succeeded — otherwise rows would be left on the device that nothing can reach.
 
+## Google sign-in
+
+Off, unconfigured in this build, documented in [docs/google-sign-in.md](docs/google-sign-in.md).
+
+- **It is an identity label, not authentication.** There is no server, so there is nobody
+  to authenticate to. It picks which local profile opens and fills in a name and avatar.
+  It does not sync, protect or follow the learner to another device, and the lock screen,
+  the disclosure and the README all say so.
+- **Nothing reaches Google until the learner agrees.** Google's script is deliberately not
+  in the layout; it is fetched on demand. An e2e test asserts that an ordinary load makes
+  no external request at all, because "works offline" is a promise worth keeping testable.
+- **The client ID is public by design** and lives in `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. That
+  is not a hole in the no-credentials rule: an OAuth client ID identifies the app and
+  authorises nothing, and authorized-origins is what restricts it. There is still no
+  secret anywhere in this app.
+- **A JWT payload is untrusted input.** Parsed with Zod, undeclared claims dropped, issuer
+  and audience and expiry checked before any network call, signature verified as RS256
+  against Google's keys, `alg: "none"` rejected. Each failure reports its own cause.
+- **`picture` must be https.** It renders as an image source, and `z.string().url()`
+  accepts `javascript:` and `data:`.
+- **One Google account links to one profile.** Two would make sign-in ambiguous.
+  Unlinking removes a label and touches no learning data.
+
 ## Offline, installation and accessibility
 
 Both documented in [docs/pwa-and-accessibility.md](docs/pwa-and-accessibility.md).
