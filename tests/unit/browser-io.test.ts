@@ -137,7 +137,7 @@ describe("feedback sounds", () => {
     expect(() => playMiss()).not.toThrow();
   });
 
-  it("plays a rising pair for a pass and a single low tone for a miss", () => {
+  it("plays a rising arpeggio for a pass and a single low tone for a miss", () => {
     const gainNode = {
       connect: vi.fn(),
       gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
@@ -168,7 +168,8 @@ describe("feedback sounds", () => {
     expect(isSoundSupported()).toBe(true);
 
     playSuccess();
-    expect(oscillators.map((o) => o.frequency.value)).toEqual([660, 880]);
+    // A major triad rather than an octave leap: it lands as an arrival, not a beep.
+    expect(oscillators.map((o) => o.frequency.value)).toEqual([659.25, 783.99, 1046.5]);
 
     oscillators.length = 0;
     playMiss();

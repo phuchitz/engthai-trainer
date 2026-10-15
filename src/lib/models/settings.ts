@@ -39,7 +39,6 @@ export const settingsSchema = z.object({
    */
   soundEnabled: z.boolean().default(true),
 
-
   /**
    * Optional AI, off by default.
    *

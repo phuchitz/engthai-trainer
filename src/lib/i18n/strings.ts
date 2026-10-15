@@ -86,7 +86,10 @@ export const STRINGS = {
   "learn.another": { en: "Another example", th: "อีกตัวอย่างหนึ่ง" },
   "learn.vocabulary": { en: "Vocabulary", th: "คำศัพท์" },
   "learn.tapWord": { en: "Tap any English word to look it up.", th: "แตะคำอังกฤษคำไหนก็ได้เพื่อดูความหมาย" },
-  "learn.noVoice.none": { en: "This browser has no speech synthesis.", th: "เบราว์เซอร์นี้อ่านออกเสียงไม่ได้" },
+  "learn.noVoice.none": {
+    en: "This browser has no speech synthesis.",
+    th: "เบราว์เซอร์นี้อ่านออกเสียงไม่ได้",
+  },
   "learn.noVoice.lang": {
     en: "No {language} voice is installed, so audio is unavailable.",
     th: "ไม่มีเสียงภาษา{language}ติดตั้งอยู่ จึงเล่นเสียงไม่ได้",
@@ -157,7 +160,10 @@ export const STRINGS = {
     en: "No sentences yet — import a deck or add your own to start this category.",
     th: "ยังไม่มีประโยคในหมวดนี้ นำเข้าชุดประโยคหรือเพิ่มเองเพื่อเริ่มต้น",
   },
-  "lessons.notStarted": { en: "Not started ({count} of {total})", th: "ยังไม่ได้เริ่ม ({count} จาก {total})" },
+  "lessons.notStarted": {
+    en: "Not started ({count} of {total})",
+    th: "ยังไม่ได้เริ่ม ({count} จาก {total})",
+  },
 
   // ---------------------------------------------------------------- settings
   "settings.theme": { en: "Theme", th: "ธีม" },

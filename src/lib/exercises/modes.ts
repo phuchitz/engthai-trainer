@@ -12,6 +12,7 @@ export type ModeInfo = {
   /** The language of the prompt, which is what the replay button speaks. */
   promptLanguage: Language;
   instruction: string;
+  instructionTh: string;
   /**
    * Whether a graded answer in this mode may move the schedule.
    *
@@ -44,6 +45,7 @@ export const MODE_INFO: Record<ExerciseMode, ModeInfo> = {
     answerLanguage: "en",
     promptLanguage: "en",
     instruction: "Type what you hear, in English",
+    instructionTh: "พิมพ์สิ่งที่ได้ยินเป็นภาษาอังกฤษ",
     schedules: true,
   },
   translate: {
@@ -54,6 +56,7 @@ export const MODE_INFO: Record<ExerciseMode, ModeInfo> = {
     answerLanguage: "en",
     promptLanguage: "th",
     instruction: "Translate this sentence into English",
+    instructionTh: "แปลประโยคนี้เป็นภาษาอังกฤษ",
     schedules: true,
   },
   fillBlank: {
@@ -64,6 +67,7 @@ export const MODE_INFO: Record<ExerciseMode, ModeInfo> = {
     answerLanguage: "en",
     promptLanguage: "th",
     instruction: "Fill in the missing words",
+    instructionTh: "เติมคำที่หายไป",
     schedules: true,
   },
   wordOrder: {
@@ -74,6 +78,7 @@ export const MODE_INFO: Record<ExerciseMode, ModeInfo> = {
     answerLanguage: "th",
     promptLanguage: "en",
     instruction: "Tap the words in order to build the Thai sentence",
+    instructionTh: "แตะคำตามลำดับเพื่อเรียงเป็นประโยคภาษาไทย",
     schedules: true,
   },
   speak: {
@@ -84,6 +89,7 @@ export const MODE_INFO: Record<ExerciseMode, ModeInfo> = {
     answerLanguage: "en",
     promptLanguage: "en",
     instruction: "Listen, then say the sentence out loud",
+    instructionTh: "ฟังแล้วพูดประโยคนั้นออกมาดัง ๆ",
     schedules: true,
   },
   multipleChoice: {
@@ -94,6 +100,7 @@ export const MODE_INFO: Record<ExerciseMode, ModeInfo> = {
     answerLanguage: "en",
     promptLanguage: "th",
     instruction: "Choose the English sentence that matches",
+    instructionTh: "เลือกประโยคภาษาอังกฤษที่ตรงกัน",
     schedules: false,
   },
 };

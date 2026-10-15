@@ -46,12 +46,10 @@ function CategoryCard({ summary }: { summary: CategorySummary }) {
         ) : null}
       </div>
 
-      <p className="text-muted mt-2 text-sm">{info.description}</p>
+      <p className="text-muted mt-2 text-sm">{language === "th" ? info.descriptionTh : info.description}</p>
 
       {empty ? (
-        <p className="text-muted mt-4 text-sm">
-          {t("lessons.empty")}
-        </p>
+        <p className="text-muted mt-4 text-sm">{t("lessons.empty")}</p>
       ) : (
         <>
           <div className="text-muted mt-4 flex items-center justify-between text-xs">
@@ -89,8 +87,7 @@ export function LessonsScreen() {
   }, [status]);
 
   if (status === "error") return <ErrorState message={error ?? "Unknown error"} />;
-  if (status === "idle" || status === "loading" || summaries === null)
-    return <LoadingState />;
+  if (status === "idle" || status === "loading" || summaries === null) return <LoadingState />;
 
   const stocked = summaries.filter((s) => s.total > 0);
   const empty = summaries.filter((s) => s.total === 0);

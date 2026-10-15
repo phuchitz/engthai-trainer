@@ -113,7 +113,6 @@ export function SettingsScreen() {
         <Row label={t("settings.strictness")} hint={t("settings.strictness.hint")}>
           <span className="text-muted text-sm capitalize">{settings.strictness}</span>
         </Row>
-
       </div>
 
       <AIPanel settings={settings} onUpdate={(patch) => void update(patch)} />

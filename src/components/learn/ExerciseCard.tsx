@@ -243,7 +243,7 @@ export function ExerciseCard() {
         ) : null}
 
         <p className="text-muted mt-5 mb-2 text-sm" id="exercise-instruction">
-          {info.instruction}
+          {language === "th" ? info.instructionTh : info.instruction}
         </p>
 
         {typesAnswer ? (
@@ -383,7 +383,8 @@ function Feedback() {
   // Chosen from the card, not at random: random praise re-rolls on every re-render, and
   // the same phrase every time reads like a stuck recording.
   const praiseKeys = result.band === "perfect" ? PERFECT_PRAISE : GREAT_PRAISE;
-  const praise = passed && result.band !== "good" ? t(pickPhrase(praiseKeys, index + sentence.id.length)) : null;
+  const praise =
+    passed && result.band !== "good" ? t(pickPhrase(praiseKeys, index + sentence.id.length)) : null;
 
   return (
     <div

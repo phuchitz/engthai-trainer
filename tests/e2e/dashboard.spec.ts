@@ -137,18 +137,20 @@ test.describe("Session summary", () => {
 });
 
 test.describe("Feedback sounds", () => {
-  test("are off by default and can be turned on", async ({ page }) => {
+  test("are on by default and can be turned off", async ({ page }) => {
+    // The tone after a correct answer is the clearest signal the app gives that
+    // something went right, so it starts on; a learner who dislikes it turns it off once.
     await page.goto("/settings/");
     const toggle = page.getByRole("switch", { name: "Feedback sounds" });
 
-    await expect(toggle).toHaveAttribute("aria-checked", "false");
-    await toggle.click();
     await expect(toggle).toHaveAttribute("aria-checked", "true");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
 
     await page.reload();
     await expect(page.getByRole("switch", { name: "Feedback sounds" })).toHaveAttribute(
       "aria-checked",
-      "true",
+      "false",
     );
   });
 });

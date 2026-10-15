@@ -221,3 +221,133 @@ test.describe("Real states, not placeholders", () => {
     await expect(page.getByRole("button", { name: /^Check/ })).toBeEnabled();
   });
 });
+
+test.describe("Thai interface and text size", () => {
+  const switchTo = async (page: Page, language: "English" | "ไทย") => {
+    await page.goto("/settings/");
+    await page
+      .getByRole("radiogroup", { name: /Interface language|ภาษาของหน้าจอ/ })
+      .getByRole("radio", { name: language })
+      .click();
+  };
+
+  test("translates the shell, not the learner's sentences", async ({ page }) => {
+    await switchTo(page, "ไทย");
+
+    await expect(page.getByRole("navigation").first().getByRole("link", { name: "ภาพรวม" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("lang", "th");
+
+    await page.goto("/learn/?category=daily&mode=translate");
+    // The app speaks Thai; the material being studied is untouched.
+    await expect(page.getByText("ข้อ 1 จาก 10")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^ตรวจ/ })).toBeVisible();
+  });
+
+  test("remembers the language across a reload", async ({ page }) => {
+    await switchTo(page, "ไทย");
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("lang", "th");
+    await expect(page.getByRole("heading", { level: 1, name: "ตั้งค่า" })).toBeVisible();
+  });
+
+  test("shows both languages in the page heading, whichever way round", async ({ page }) => {
+    await page.goto("/lessons/");
+    await expect(page.getByRole("heading", { level: 1, name: "Lessons" })).toBeVisible();
+    await expect(page.locator("h1 + p")).toHaveText("บทเรียน");
+
+    await switchTo(page, "ไทย");
+    await page.goto("/lessons/");
+    await expect(page.getByRole("heading", { level: 1, name: "บทเรียน" })).toBeVisible();
+    await expect(page.locator("h1 + p")).toHaveText("Lessons");
+  });
+
+  test("can be switched back by someone who cannot read Thai", async ({ page }) => {
+    // Each option is written in its own language, so the way out is always legible.
+    await switchTo(page, "ไทย");
+    await switchTo(page, "English");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  });
+
+  test("text size scales the whole app and is remembered", async ({ page }) => {
+    await page.goto("/settings/");
+    const before = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize);
+
+    await page
+      .getByRole("radiogroup", { name: /Text size|ขนาดตัวอักษร/ })
+      .getByRole("radio", { name: "Extra large" })
+      .click();
+    await expect(page.locator("html")).toHaveAttribute("data-text", "xl");
+
+    await page.reload();
+    const after = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize);
+    expect(parseFloat(after)).toBeGreaterThan(parseFloat(before));
+  });
+
+  test("gives Thai more line spacing than Latin", async ({ page }) => {
+    // Thai vowel signs stack above and below the line and collide at Latin leading.
+    await page.goto("/learn/?category=daily&mode=translate");
+    const ratio = await page.evaluate(() => {
+      const thai = document.querySelector("main p[lang='th']") as HTMLElement | null;
+      if (!thai) return null;
+      const style = getComputedStyle(thai);
+      return parseFloat(style.lineHeight) / parseFloat(style.fontSize);
+    });
+    expect(ratio).not.toBeNull();
+    expect(ratio!).toBeGreaterThan(1.5);
+  });
+
+  test("still has no horizontal overflow at the largest text size", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto("/settings/");
+    await page
+      .getByRole("radiogroup", { name: /Text size/ })
+      .getByRole("radio", { name: "Extra large" })
+      .click();
+
+    for (const route of ROUTES) {
+      await page.goto(route.path);
+      const measured = await overflow(page);
+      expect(measured.scrollWidth, `${route.path} ${JSON.stringify(measured.worst)}`).toBeLessThanOrEqual(
+        320,
+      );
+    }
+  });
+});
+
+test.describe("The happy case", () => {
+  test("celebrates a correct answer with praise and a sound cue", async ({ page }) => {
+    await page.goto("/learn/?category=daily&mode=translate");
+    await page.getByLabel("Translate this sentence into English").fill("where are you going");
+    await page.getByRole("button", { name: /^Check/ }).click();
+    await expect(page.getByRole("button", { name: /^Next/ })).toBeVisible();
+
+    const panel = page.locator(".animate-celebrate");
+    await expect(panel).toBeVisible();
+    // Praise is in addition to the grade, not instead of it.
+    await expect(page.getByText("Perfect", { exact: true })).toBeVisible();
+    await expect(page.getByText("First one today")).toBeVisible();
+  });
+
+  test("does not celebrate a wrong answer", async ({ page }) => {
+    await page.goto("/learn/?category=daily&mode=translate");
+    await page.getByLabel("Translate this sentence into English").fill("completely wrong");
+    await page.getByRole("button", { name: /^Check/ }).click();
+    await expect(page.getByRole("button", { name: /^Next/ })).toBeVisible();
+
+    await expect(page.locator(".animate-celebrate")).toHaveCount(0);
+  });
+
+  test("praises in Thai when the interface is Thai", async ({ page }) => {
+    await page.goto("/settings/");
+    await page
+      .getByRole("radiogroup", { name: /Interface language/ })
+      .getByRole("radio", { name: "ไทย" })
+      .click();
+
+    await page.goto("/learn/?category=daily&mode=translate");
+    await page.getByLabel(/แปลประโยคนี้|Translate this sentence into English/).fill("where are you going");
+    await page.getByRole("button", { name: /^ตรวจ/ }).click();
+
+    await expect(page.getByText("ข้อแรกของวันนี้")).toBeVisible();
+  });
+});

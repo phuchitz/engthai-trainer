@@ -3,8 +3,10 @@
 import Link from "next/link";
 import type { Category } from "@/lib/models";
 import { IMPLEMENTED_MODES, MODE_INFO, type ImplementedMode } from "@/lib/exercises";
+import { useT } from "@/components/display/preferences";
 
 export function ModePicker({ category, active }: { category: Category; active: ImplementedMode }) {
+  const { language } = useT();
   return (
     <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Exercise mode">
       {IMPLEMENTED_MODES.map((mode) => {
@@ -20,7 +22,7 @@ export function ModePicker({ category, active }: { category: Category; active: I
                 : "border-border text-muted hover:text-foreground border"
             }`}
           >
-            {MODE_INFO[mode].label}
+            {language === "th" ? MODE_INFO[mode].labelTh : MODE_INFO[mode].label}
           </Link>
         );
       })}

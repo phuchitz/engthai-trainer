@@ -178,7 +178,12 @@ html[lang="th"] {
   position: absolute;
   inset: 0 auto 0 0;
   width: 40%;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--success) 18%, transparent), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--success) 18%, transparent),
+    transparent
+  );
   animation: celebrate-sheen 700ms ease-out 120ms both;
   pointer-events: none;
 }

@@ -229,6 +229,26 @@ memory. That is what makes them survive a refresh, a resubmission or a second ta
   a card until it is right cannot buy a longer interval.
 - A skip is logged but is never a success: no XP, no schedule move, and the card stays due.
 
+## Interface language, text size and the happy case
+
+- **Every phrase carries both languages in one object** (`src/lib/i18n/strings.ts`), so a
+  missing Thai translation is a type error where it is missing. Two parallel dictionaries
+  could only be checked after the fact, and only report that _something_ is absent.
+- **Language and text size live in `localStorage`, not the settings store**, for the
+  reason the theme does: both must be readable before first paint, or the whole app
+  renders one way and then swaps. They are per-browser, and a restored backup does not
+  carry them. Migration v6 dropped the dead `settings.uiLanguage` that nothing read.
+- **Translating the interface never touches the learner's sentences.** The deck, its Thai
+  and its grammar notes are the material being studied, not chrome.
+- **A page heading always shows both languages**, current one leading. A learner reading
+  Thai still benefits from the English, and the other way round.
+- **Each language option is written in its own language** in the switcher, so someone who
+  cannot read the current one can still find the way back.
+- **Praise is chosen from the card, not at random.** Random praise re-rolls on every React
+  re-render; one fixed phrase reads like a stuck recording.
+- The celebration is confined to the answer card and the `prefers-reduced-motion` block
+  neutralises it, including the decorative sheen.
+
 ## Profiles and the passcode
 
 `src/lib/profiles` keeps a registry of who studies on this device. It is **not an account
