@@ -35,7 +35,28 @@ If that is the thing you actually want, you want a backend — see the end of th
    NEXT_PUBLIC_GOOGLE_CLIENT_ID=1234567890-abcdef.apps.googleusercontent.com
    ```
 
-4. Rebuild. The sign-in option appears on the profile picker and in Settings.
+4. Rebuild. The sign-in option appears in **Settings → Profiles**, and on the profile
+   picker when one is shown.
+
+### On a host rather than locally
+
+Same steps, with two things that catch people out:
+
+- **Authorized JavaScript origins must contain the deployed origin exactly** — for
+  example `https://engthai-trainer.vercel.app`, with no trailing slash and no path. Add
+  `http://localhost:3000` alongside it to keep development working.
+- **`NEXT_PUBLIC_*` is read at build time, not at run time.** It is inlined into the
+  JavaScript bundle, so adding the variable in a hosting dashboard changes nothing until
+  you trigger a **new deployment**. This is the usual reason the option is still missing
+  after setting it.
+
+### Where it appears
+
+- **Settings → Profiles**, always — showing either the sign-in button or the "not set up"
+  note, the way the AI panel reports a provider it does not have.
+- **The profile picker**, which only appears when you have signed out or have more than
+  one profile. A single learner with no passcode goes straight into the app and never
+  sees it, which is deliberate.
 
 Without step 3 the app says "Google sign-in is not set up in this build" and the local
 profile picker works exactly as it always has.
